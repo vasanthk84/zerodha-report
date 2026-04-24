@@ -1,0 +1,336 @@
+/* ===== CSV import — parses Zerodha tradebook + P&L CSV and updates SEED ===== */
+/* FIXES applied:
+   1. Equity timestamp: falls back to trade_date when order_execution_time is missing/NaN
+   2. trade_type: normalised to lowercase for matching
+   3. Symbol matching: tries direct match then case-insensitive; logs diagnostics
+   4. eqT populated even when only P&L is available (position-level fallback)
+*/
+(() => {
+  const MMAP = {JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
+  const LOT_SIZES = {NIFTY:75,SENSEX:10,INFY:400,BEL:1425,HAL:150,OFSS:75,CAMS:150,HCLTECH:350,BANKEX:15,BANKNIFTY:25};
+
+  const state = { foRaw:null, eqRaw:null, foPnl:null, eqPnl:null };
+
+  // ---------- PARSERS ----------
+  function parseCSV(text){
+    const lines = text.trim().split(/\r?\n/);
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+    return lines.slice(1).map(line => {
+      const vals = line.split(',').map(v => v.trim().replace(/"/g,''));
+      const obj = {}; headers.forEach((h,i) => obj[h] = vals[i] || '');
+      return obj;
+    }).filter(r => r[headers[0]]);
+  }
+
+  function parsePnlCSV(text){
+    text = text.replace(/^\uFEFF/, '');
+    const lines = text.split(/\r?\n/).map(l => l.trim());
+    let charges = 0;
+    for (const line of lines){
+      const parts = line.split(',');
+      if (parts[0] === 'Charges' && !isNaN(parseFloat(parts[1]))){ charges = parseFloat(parts[1]); break; }
+    }
+    // Support both "Symbol,ISIN," and just "Symbol," header patterns
+    const headerIdx = lines.findIndex(l => l.startsWith('Symbol,'));
+    const positions = {};
+    if (headerIdx !== -1){
+      const headers = lines[headerIdx].split(',').map(h => h.trim());
+      for (let i = headerIdx + 1; i < lines.length; i++){
+        const line = lines[i]; if (!line || line.startsWith(',')) continue;
+        const vals = line.split(',');
+        const o = {}; headers.forEach((h,j) => o[h] = (vals[j]||'').trim());
+        if (!o['Symbol']) continue;
+        positions[o['Symbol']] = {
+          quantity:      parseFloat(o['Quantity'])||0,
+          buy_value:     parseFloat(o['Buy Value'])||0,
+          sell_value:    parseFloat(o['Sell Value'])||0,
+          realized_pnl:  parseFloat(o['Realized P&L'])||0,
+          realized_pct:  parseFloat(o['Realized P&L Pct.'])||0
+        };
+      }
+    }
+    return { charges, positions };
+  }
+
+  function parseFoSymbol(sym){
+    const m = sym.match(/^([A-Z&]+?)(\d{2})([A-Z]{3})(\d+)(CE|PE|FUT)$/);
+    if (m) return { stock:m[1], year:'20'+m[2], month:m[3], month_num:MMAP[m[3]]||0, strike:parseInt(m[4]), opt_type:m[5] };
+    return { stock:sym, year:'', month:'', month_num:0, strike:null, opt_type:'UNKNOWN' };
+  }
+
+  // FIX: safe date parser with fallback
+  function safeDate(primary, fallback){
+    let d = new Date(primary);
+    if (isNaN(d.getTime())) d = new Date(fallback);
+    if (isNaN(d.getTime())) d = new Date();
+    return d;
+  }
+
+  // ---------- BUILD SEED FROM CSV ----------
+  function computeAndApply(){
+    const foReady = !!(state.foRaw && state.foPnl);
+    const eqReady = !!(state.eqRaw && state.eqPnl) || !!(state.eqPnl);
+    if (!foReady && !state.eqPnl) return alert('Upload at least one complete pair: tradebook + P&L CSV for F&O or Equity.');
+
+    const foRows = foReady ? state.foRaw : [];
+    const eqRows = state.eqRaw ? state.eqRaw : [];
+    const foPnl  = foReady ? state.foPnl : { charges:0, positions:{} };
+    const eqPnl  = state.eqPnl ? state.eqPnl : { charges:0, positions:{} };
+
+    foRows.forEach(r => {
+      r._ts = safeDate(r.order_execution_time, r.trade_date);
+      r._dt = new Date(r.trade_date);
+    });
+    // FIX: Equity rows — normalise trade_type to lowercase, safe timestamp
+    eqRows.forEach(r => {
+      r.trade_type = (r.trade_type || r.transaction_type || '').toLowerCase().trim();
+      r._ts = safeDate(r.order_execution_time, r.trade_date);
+      r._dt = new Date(r.trade_date);
+    });
+
+    const group = rows => rows.reduce((g,r) => {
+      // group by symbol, also build case-insensitive lookup
+      const key = (r.symbol || r.tradingsymbol || '').trim();
+      r._sym = key;
+      (g[key] = g[key] || []).push(r);
+      return g;
+    }, {});
+
+    const foGroups = group(foRows);
+    // FIX: build case-insensitive equity groups map
+    const eqGroupsRaw = group(eqRows);
+    const eqGroupsUpper = {};
+    Object.keys(eqGroupsRaw).forEach(k => { eqGroupsUpper[k.toUpperCase()] = eqGroupsRaw[k]; });
+
+    // Build F&O trades
+    const foT = [];
+    Object.entries(foPnl.positions).forEach(([sym, pos]) => {
+      const trades = (foGroups[sym] || []).sort((a,b) => a._ts - b._ts);
+      if (!trades.length) return;
+      const first = trades[0], last = trades[trades.length-1];
+      const days = Math.max(0, Math.round((last._dt - first._dt) / 86400000));
+      const p = parseFoSymbol(sym);
+      const qty = pos.quantity;
+      const entry = qty > 0 ? pos.buy_value / qty : 0;
+      const exit  = qty > 0 ? pos.sell_value / qty : 0;
+      const pnl = pos.realized_pnl;
+      const month_label = p.month && p.year ? `${p.month} ${p.year.slice(-2)}` : 'OTHER';
+      const hold_bucket = days===0 ? 'Intraday' : days<=2 ? '1–2 days' : days<=7 ? '3–7 days' : days<=14 ? '8–14 d' : days<=30 ? '15–30 d' : '30 d +';
+      const price_bucket = entry<5 ? 'Deep OTM' : entry<20 ? 'OTM' : entry<50 ? 'Near ATM' : entry<150 ? 'ATM' : 'ITM';
+      const price_sub    = entry<5 ? '< ₹5'    : entry<20 ? '₹5 – ₹20' : entry<50 ? '₹20 – ₹50' : entry<150 ? '₹50 – ₹150' : '> ₹150';
+      foT.push({
+        sym, stk: p.stock, type: p.opt_type, entry: +entry.toFixed(2), exit: +exit.toFixed(2),
+        pnl: +pnl.toFixed(2), pct: +pos.realized_pct.toFixed(1),
+        d: days, k: days===0 ? 'intra' : 'pos', win: pnl>0,
+        close: last.trade_date || last._ts.toISOString().slice(0,10),
+        open_date: first.trade_date || first._ts.toISOString().slice(0,10),
+        open_hour: first._ts.getHours(),
+        lots: LOT_SIZES[p.stock] ? +(pos.quantity / LOT_SIZES[p.stock]).toFixed(1) : null,
+        month_label, hold_bucket, price_bucket, price_sub
+      });
+    });
+    foT.sort((a,b) => a.close.localeCompare(b.close));
+
+    // Build equity trades
+    // FIX: symbol matching — try exact, then uppercase, then P&L-symbol-lookup in tradebook
+    const eqT = [];
+    console.log('[eq] pnl positions:', Object.keys(eqPnl.positions).length);
+    console.log('[eq] tradebook symbols:', Object.keys(eqGroupsRaw).length);
+
+    Object.entries(eqPnl.positions).forEach(([sym, pos]) => {
+      // FIX: find matching tradebook rows with symbol normalisation
+      let trades = eqGroupsRaw[sym]
+        || eqGroupsUpper[sym.toUpperCase()]
+        || eqGroupsRaw[sym.replace(/-/g,'')]
+        || [];
+
+      const buys  = trades.filter(t => t.trade_type === 'buy'  || t.trade_type === 'b');
+      const sells = trades.filter(t => t.trade_type === 'sell' || t.trade_type === 's');
+
+      // Even if no tradebook rows matched, we can still build a position from P&L data alone
+      let days = 0;
+      if (buys.length && sells.length){
+        const firstBuy  = buys.reduce((a,b)=>a._dt<b._dt?a:b);
+        const lastSell  = sells.reduce((a,b)=>a._dt>b._dt?a:b);
+        days = Math.max(0, Math.round((lastSell._dt - firstBuy._dt) / 86400000));
+      }
+
+      const qty = pos.quantity;
+      const pnl = pos.realized_pnl;
+      if (pnl === 0 && qty === 0 && pos.buy_value === 0) return; // skip empty rows
+
+      eqT.push({
+        sym,
+        qty,
+        entry: +(qty>0 ? pos.buy_value/qty : 0).toFixed(2),
+        exit:  +(qty>0 ? pos.sell_value/qty : 0).toFixed(2),
+        pnl:   +pnl.toFixed(2),
+        pct:   +pos.realized_pct.toFixed(1),
+        d: days,
+        close: sells.length ? (sells.reduce((a,b)=>a._dt>b._dt?a:b).trade_date || '') : '',
+        win: pnl > 0
+      });
+    });
+    console.log('[eq] built trades:', eqT.length);
+
+    // Aggregations
+    const by = (rows, key) => {
+      const m = {};
+      rows.forEach(r => {
+        const k = String(r[key] || '');
+        if (!m[k]) m[k] = { n:0, pnl:0, wins:0, items:[] };
+        m[k].n++; m[k].pnl += r.pnl; if (r.win) m[k].wins++; m[k].items.push(r);
+      });
+      return Object.entries(m).map(([k,v]) => ({
+        key:k, n:v.n, pnl: Math.round(v.pnl), wins:v.wins,
+        wr: Math.round(v.wins / Math.max(v.n,1) * 1000)/10,
+        avgD: +(v.items.reduce((a,t)=>a+t.d,0)/Math.max(v.n,1)).toFixed(1)
+      }));
+    };
+
+    const charges_fo = foPnl.charges || 0;
+    const charges_eq = eqPnl.charges || 0;
+    const foGross = foT.reduce((a,t)=>a+t.pnl,0);
+    const eqGross = eqT.reduce((a,t)=>a+t.pnl,0);
+    const foNet = foGross - charges_fo;
+    const eqNet = eqGross - charges_eq;
+    const combined = foNet + eqNet;
+    const wins = foT.filter(t=>t.win).length, losses = foT.length - wins;
+
+    const monthOrd = { JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12 };
+    const monthly = by(foT, 'month_label').map(m => {
+      const [mn, yr] = m.key.split(' ');
+      return { m:m.key, pnl:m.pnl, _ord: (parseInt(yr)||0)*100 + (monthOrd[mn]||0) };
+    }).sort((a,b) => a._ord - b._ord);
+
+    let cum = 0;
+    const cumulative = foT.map(t => (cum += t.pnl, Math.round(cum)));
+    if (!cumulative.length) cumulative.push(0);
+
+    const byStock = by(foT, 'stk').map(s => ({ sym:s.key, pnl:s.pnl, wr:s.wr, n:s.n, wins:s.wins, avgD:s.avgD }))
+      .sort((a,b)=>b.pnl-a.pnl);
+
+    const holdOrd = { 'Intraday':0,'1–2 days':1,'3–7 days':2,'8–14 d':3,'15–30 d':4,'30 d +':5 };
+    const byHold = by(foT, 'hold_bucket').map(h => ({
+      k:h.key, n:h.n, wr:h.wr, pnl:h.pnl,
+      rating: h.pnl<0 ? 'bad' : h.wr>=85 ? 'good' : 'mid'
+    })).sort((a,b)=>(holdOrd[a.k]??9)-(holdOrd[b.k]??9));
+
+    const byHour = by(foT, 'open_hour').map(h => ({
+      h: String(h.key).padStart(2,'0')+':00', n:h.n, wr:h.wr, _ord:parseInt(h.key)
+    })).sort((a,b)=>a._ord-b._ord);
+
+    const pbOrd = {'Deep OTM':0,'OTM':1,'Near ATM':2,'ATM':3,'ITM':4};
+    const byBucket = by(foT, 'price_bucket').map(b => {
+      const item = foT.find(t => t.price_bucket === b.key);
+      return { k:b.key, sub:item?item.price_sub:'', n:b.n, pnl:b.pnl, wr:b.wr };
+    }).sort((a,b)=>(pbOrd[a.k]??9)-(pbOrd[b.k]??9));
+
+    const cepe = by(foT, 'type').filter(t => t.key==='CE' || t.key==='PE')
+      .map(t => ({ t:t.key, n:t.n, pnl:t.pnl, wr:t.wr, avg: Math.round(t.pnl/Math.max(t.n,1)) }));
+
+    const best = foT.length ? foT.reduce((a,b)=>b.pnl>a.pnl?b:a) : null;
+    const worst = foT.length ? foT.reduce((a,b)=>b.pnl<a.pnl?b:a) : null;
+
+    // Equity aggregation: by symbol
+    const eqByStock = {};
+    eqT.forEach(t => {
+      if (!eqByStock[t.sym]) eqByStock[t.sym] = { sym:t.sym, pnl:0, n:0, wins:0 };
+      eqByStock[t.sym].pnl += t.pnl; eqByStock[t.sym].n++; if (t.win) eqByStock[t.sym].wins++;
+    });
+    const eqStocks = Object.values(eqByStock).map(s => ({
+      sym:s.sym, pnl: Math.round(s.pnl), n:s.n,
+      wr: Math.round(s.wins/Math.max(s.n,1)*1000)/10
+    })).sort((a,b)=>b.pnl-a.pnl);
+    const eqWins = eqT.filter(t=>t.win).length;
+    const eqLosses = eqT.length - eqWins;
+    const eqAvgHold = eqT.length ? +(eqT.reduce((a,t)=>a+t.d,0)/eqT.length).toFixed(1) : 0;
+
+    // Use fallback seed data for sections not covered by uploaded CSVs
+    const prev = window.SEED;
+
+    window.SEED = {
+      meta: { client:'Uploaded', period:'Your data' },
+      hero: { combined, combinedPct: 0, fo_net:foNet, fo_gross:foGross, fo_charges:charges_fo, eq_net:eqNet, eq_gross:eqGross, eq_charges:charges_eq },
+      monthly: monthly.length ? monthly : prev.monthly,
+      cumulative: cumulative.length > 1 ? cumulative : prev.cumulative,
+      stocks: byStock.length ? byStock.slice(0, 12) : prev.stocks,
+      byHold: byHold.length ? byHold : prev.byHold,
+      byHour: byHour.length ? byHour : prev.byHour,
+      byBucket: byBucket.length ? byBucket : prev.byBucket,
+      cepe: cepe.length ? cepe : prev.cepe,
+      trades: foT.length ? foT.map(t => ({ sym:t.sym, stk:t.stk, type:t.type, entry:t.entry, exit:t.exit, pnl:t.pnl, pct:t.pct, d:t.d, k:t.k, win:t.win, close:t.close, open_date:t.open_date, lots:t.lots, open_hour:t.open_hour })) : prev.trades,
+      equity: {
+        gross: Math.round(eqGross), net: Math.round(eqNet), charges: Math.round(charges_eq),
+        wins: eqWins, losses: eqLosses,
+        wr: Math.round(eqWins/Math.max(eqT.length,1)*1000)/10,
+        avgHold: eqAvgHold, total: eqT.length,
+        stocks: eqStocks.length ? eqStocks : prev.equity.stocks,
+        trades: eqT
+      },
+      extras: { best, worst, totalPositions: foT.length, wins, losses, winRate: Math.round(wins/Math.max(foT.length,1)*1000)/10 }
+    };
+
+    console.log('[eq] SEED.equity:', JSON.stringify(window.SEED.equity, null, 2));
+
+    // Trigger full redraw
+    if (window.DASHBOARD_REDRAW) window.DASHBOARD_REDRAW();
+    // Close modal
+    document.getElementById('dataModal').hidden = true;
+  }
+
+  // ---------- FILE INPUT WIRING ----------
+  function wireDrop(idx, onData){
+    const drops = document.querySelectorAll('#dataModal .drop');
+    const drop = drops[idx]; if (!drop) return;
+    const input = drop.querySelector('input[type=file]');
+    const tLbl = drop.querySelector('.drop-s');
+
+    function handle(file){
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = onData(ev.target.result, file);
+          drop.classList.add('loaded');
+          tLbl.textContent = `✓ ${file.name}` + (data ? ` · ${data}` : '');
+          updateComputeEnabled();
+        } catch(err){
+          tLbl.textContent = '✗ Parse error — check format';
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    input.addEventListener('change', e => handle(e.target.files[0]));
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault(); drop.classList.remove('drag');
+      handle(e.dataTransfer.files[0]);
+    });
+  }
+
+  function updateComputeEnabled(){
+    const btn = document.querySelector('#dataModal .btn-primary'); if (!btn) return;
+    const foReady = !!(state.foRaw && state.foPnl);
+    const eqReady = !!(state.eqPnl); // only P&L required; tradebook is optional
+    btn.disabled = !(foReady || eqReady);
+    btn.style.opacity = btn.disabled ? .5 : 1;
+    btn.style.cursor = btn.disabled ? 'not-allowed' : 'pointer';
+  }
+
+  function init(){
+    wireDrop(0, text => { state.foRaw = parseCSV(text); return `${state.foRaw.length} rows`; });
+    wireDrop(1, text => { state.foPnl = parsePnlCSV(text); return `${Object.keys(state.foPnl.positions).length} symbols · ₹${Math.round(state.foPnl.charges)} charges`; });
+    wireDrop(2, text => { state.eqRaw = parseCSV(text); return `${state.eqRaw.length} rows`; });
+    wireDrop(3, text => { state.eqPnl = parsePnlCSV(text); return `${Object.keys(state.eqPnl.positions).length} symbols`; });
+    const btn = document.querySelector('#dataModal .btn-primary');
+    if (btn){ btn.addEventListener('click', computeAndApply); btn.textContent = 'Compute & load'; }
+    updateComputeEnabled();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();

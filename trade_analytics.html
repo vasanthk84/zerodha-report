@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trade Analytics — FY 25-26</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/css/trade_analytics.css">
+</head>
+<body data-theme="light" data-density="comfortable">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="tb-left">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 17 L9 11 L13 14 L21 5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="21" cy="5" r="1.5" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div class="tb-titles">
+        <div class="tb-eyebrow">Account · DV1182</div>
+        <div class="tb-title">Trade Analytics</div>
+      </div>
+    </div>
+
+    <nav class="tb-tabs" role="tablist">
+      <button class="tb-tab active" data-tab="overview" role="tab">Overview</button>
+      <button class="tb-tab" data-tab="trades" role="tab">Trades</button>
+      <button class="tb-tab" data-tab="equity" role="tab">Equity</button>
+      <button class="tb-tab" data-tab="analysis" role="tab">Analysis</button>
+      <button class="tb-tab" data-tab="edge" role="tab">Edge &amp; Lessons</button>
+      <button class="tb-tab" data-tab="market" role="tab" style="color:var(--accent);font-weight:700">📡 Market Context</button>
+    </nav>
+
+    <div class="tb-right">
+      <div class="tb-period">
+        <span class="tb-period-dot"></span>
+        <span>FY 2025—26</span>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4 L5 7 L8 4" stroke-linecap="round"/></svg>
+      </div>
+      <button class="tb-icon" id="btnData" title="Load / replace data">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 11 V13 A1 1 0 0 0 3 14 H13 A1 1 0 0 0 14 13 V11 M8 2 V10 M4.5 6.5 L8 10 L11.5 6.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Data</span>
+      </button>
+      <button class="tb-icon" id="btnTheme" title="Toggle theme">
+        <svg class="ic-sun" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="3"/><path d="M8 1 V2.5 M8 13.5 V15 M1 8 H2.5 M13.5 8 H15 M3 3 L4 4 M12 12 L13 13 M3 13 L4 12 M12 4 L13 3" stroke-linecap="round"/></svg>
+        <svg class="ic-moon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.5 9.5 A5.5 5.5 0 0 1 6.5 2.5 A6 6 0 1 0 13.5 9.5 Z" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ MAIN ============ -->
+  <main class="page">
+
+    <!-- ======== OVERVIEW ======== -->
+    <section class="panel active" id="p-overview" data-screen-label="01 Overview">
+
+      <!-- HERO -->
+      <div class="hero">
+        <div class="hero-grid">
+          <div class="hero-lead">
+            <div class="eyebrow" title="F&O net (gross − charges) + Equity net (gross − charges). Charges include brokerage, STT, GST, stamp duty, SEBI and exchange fees — everything Zerodha reports in the P&L CSV.">Combined net P&amp;L · after charges <span style="color:var(--muted-2);font-weight:500;letter-spacing:0;text-transform:none;font-size:11px">ⓘ</span></div>
+            <div class="hero-num" id="heroNum">
+              <span class="hero-sign">+</span>
+              <span class="hero-currency">₹</span>
+              <span class="hero-val">1,56,710</span>
+              <span class="hero-delta">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M5 1 L9 8 L1 8 Z"/></svg>
+                <span>28.4%</span>
+              </span>
+            </div>
+            <div class="hero-sub">
+              <span class="serif">Strong year.</span> 289 F&amp;O positions · 87.5% win rate · Mar 26 up <b class="pos">₹31,690</b>
+            </div>
+          </div>
+
+          <div class="hero-curve">
+            <div class="curve-lbl">
+              <span>Cumulative P&amp;L</span>
+              <span class="curve-range">Aug 25 — Mar 26</span>
+            </div>
+            <svg id="heroCurve" viewBox="0 0 600 140" preserveAspectRatio="none" class="curve-svg"></svg>
+          </div>
+
+          <div class="hero-split">
+            <div class="split-row">
+              <div class="split-lbl">F&amp;O · Net</div>
+              <div class="split-val pos">+₹1,58,634</div>
+              <div class="split-meta">Gross ₹1,74,841 · Charges ₹16,206</div>
+            </div>
+            <div class="split-row">
+              <div class="split-lbl">Equity · Net</div>
+              <div class="split-val neg">−₹1,924</div>
+              <div class="split-meta">Gross +₹6,126 · Charges ₹8,049</div>
+            </div>
+            <div class="split-row">
+              <div class="split-lbl">Best day</div>
+              <div class="split-val">Mar 09 · +₹12,480</div>
+              <div class="split-meta">NIFTY 26MAR 23700CE + OFSS</div>
+            </div>
+            <div class="split-row">
+              <div class="split-lbl">Worst trade</div>
+              <div class="split-val neg">OFSS 25SEP 8700CE</div>
+              <div class="split-meta">−₹21,862 · held 17 days</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI ROW -->
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-lbl">Win Rate</div>
+          <div class="kpi-val">87.5<span class="unit">%</span></div>
+          <div class="kpi-bar"><span style="width:87.5%"></span></div>
+          <div class="kpi-sub">253 wins · 36 losses</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Avg P&amp;L / trade</div>
+          <div class="kpi-val">605<span class="unit">₹</span></div>
+          <div class="kpi-spark"><svg viewBox="0 0 80 24" preserveAspectRatio="none"><polyline fill="none" stroke="currentColor" stroke-width="1.2" points="0,18 10,16 20,17 30,12 40,14 50,8 60,10 70,6 80,4"/></svg></div>
+          <div class="kpi-sub">Positional 628 · Intraday 506</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Positions</div>
+          <div class="kpi-val">289</div>
+          <div class="kpi-split">
+            <span><i class="dot pos"></i>Wins 253</span>
+            <span><i class="dot neg"></i>Losses 36</span>
+          </div>
+          <div class="kpi-sub">Avg 3.3 days held</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">CE vs PE</div>
+          <div class="kpi-val">84k<span class="unit"> / </span>69k</div>
+          <div class="kpi-stack">
+            <div class="stack-bar"><span class="stk-ce" style="width:54.9%"></span><span class="stk-pe" style="width:45.1%"></span></div>
+            <div class="stack-leg">
+              <span><i class="dot ce"></i>Calls 98</span>
+              <span><i class="dot pe"></i>Puts 58</span>
+            </div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Edge signal</div>
+          <div class="kpi-val serif hi">A−</div>
+          <div class="kpi-sub">Positional &gt; Intraday · NIFTY strongest · OTM is a leak</div>
+        </div>
+      </div>
+
+      <!-- TWO-COL: monthly + cumulative -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Monthly P&amp;L</div>
+            <div class="card-sub">Realized, option-price level</div>
+          </div>
+          <div class="chart-h200"><canvas id="cMonthly"></canvas></div>
+          <div class="card-foot" id="monthlyFoot">
+            <div><span class="ft-k">Best</span> MAR 26 <b class="pos">+₹31,690</b></div>
+            <div><span class="ft-k">Only red</span> SEP 25 <b class="neg">−₹8,596</b></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Cumulative P&amp;L</div>
+            <div class="card-sub">Trade-by-trade running total — drawdowns visible</div>
+          </div>
+          <div class="chart-h200"><canvas id="cCumulative"></canvas></div>
+          <div class="card-foot">
+            <div><span class="ft-k">Peak</span> <b class="pos" id="cumulPeak">₹1,74,841</b></div>
+            <div><span class="ft-k">Max drawdown</span> <b class="neg" id="cumulDd">−₹21,863</b></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TWO-COL: insights -->
+      <div class="two-col">
+        <div class="card" style="grid-column:1/-1">
+          <div class="card-head">
+            <div class="card-title">What worked — what didn't</div>
+            <div class="card-sub">Auto-generated from your trades · see Edge &amp; Lessons tab for full analysis</div>
+          </div>
+          <ul class="insights">
+            <li class="ins pos">
+              <div class="ins-rail"></div>
+              <div class="ins-copy">
+                <b>Near-ATM options are your sweet spot.</b>
+                <span>₹20–50 entry bucket: <b class="pos">₹68,273 · 90.3% WR</b> across 124 trades.</span>
+              </div>
+            </li>
+            <li class="ins pos">
+              <div class="ins-rail"></div>
+              <div class="ins-copy">
+                <b>Short holds convert best.</b>
+                <span>1–2 day holds averaged <b class="pos">₹944 / trade · 93.5% WR</b> — your highest-edge zone.</span>
+              </div>
+            </li>
+            <li class="ins neg">
+              <div class="ins-rail"></div>
+              <div class="ins-copy">
+                <b>Holding &gt; 2 weeks breaks the edge.</b>
+                <span>15–30d bucket: <b class="neg">−₹13,790 · 42.9% WR</b>. Cut these sooner.</span>
+              </div>
+            </li>
+            <li class="ins neg">
+              <div class="ins-rail"></div>
+              <div class="ins-copy">
+                <b>Equity swing book is underwater.</b>
+                <span>45% WR, net <b class="neg">−₹1,924</b>. OFSS and MAZDOCK alone cost you <b class="neg">₹13,594</b>.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- STOCK LEADERBOARD -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">By stock</div>
+          <div class="card-sub">F&amp;O · sorted by net P&amp;L</div>
+        </div>
+        <div class="leader" id="leaderboard"></div>
+      </div>
+
+    </section>
+
+    <!-- ======== TRADES ======== -->
+    <section class="panel" id="p-trades" data-screen-label="02 Trades">
+      <div class="trades-head">
+        <div>
+          <div class="eyebrow">Positions</div>
+          <h2 class="section-h">All F&amp;O trades · <span class="muted">289 rows</span></h2>
+        </div>
+        <div class="trades-ctrl">
+          <div class="search">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M11 11 L14 14" stroke-linecap="round"/></svg>
+            <input id="tSearch" placeholder="Search symbol or stock…" />
+          </div>
+          <div class="seg" data-filter="type">
+            <button class="on" data-val="">All</button>
+            <button data-val="CE">CE</button>
+            <button data-val="PE">PE</button>
+          </div>
+          <div class="seg" data-filter="win">
+            <button class="on" data-val="">Result</button>
+            <button data-val="win">Wins</button>
+            <button data-val="loss">Losses</button>
+          </div>
+          <div class="seg" data-filter="kind">
+            <button class="on" data-val="">Any</button>
+            <button data-val="intra">Intraday</button>
+            <button data-val="pos">Positional</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Type</th>
+              <th class="num">Entry</th>
+              <th class="num">Exit</th>
+              <th class="num">P&amp;L</th>
+              <th class="num">P&amp;L/Lot</th>
+              <th class="num">Lots</th>
+              <th class="num">Δ%</th>
+              <th class="num">Days</th>
+              <th>Kind</th>
+              <th>Result</th>
+              <th class="num">Open</th>
+              <th class="num">Close</th>
+            </tr>
+          </thead>
+          <tbody id="tBody"></tbody>
+        </table>
+        <div class="tbl-foot">
+          <span id="tCount">Showing 289 of 289</span>
+          <span class="muted">Click a column to sort · data local to browser</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== EQUITY ======== -->
+    <section class="panel" id="p-equity" data-screen-label="03 Equity">
+      <div class="trades-head">
+        <div>
+          <div class="eyebrow">Equity book · FY 2025-26</div>
+          <h2 class="section-h">Equity swing trades · <span class="muted" id="eqCount">53 positions</span></h2>
+        </div>
+      </div>
+
+      <!-- Charges warning banner -->
+      <div class="charges-warn" id="eqChargesWarn" hidden>
+        ⚠ Charges exceed gross gains — this book is losing money after all fees.
+      </div>
+
+      <div class="kpi-row" id="eqKpis">
+        <div class="kpi">
+          <div class="kpi-lbl">Gross P&amp;L</div>
+          <div class="kpi-val" id="eqGross">+6,126<span class="unit">₹</span></div>
+          <div class="kpi-sub">Before charges</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Net after charges</div>
+          <div class="kpi-val" id="eqNet" style="color:var(--neg)">−1,924<span class="unit">₹</span></div>
+          <div class="kpi-sub" id="eqChg">Charges ₹8,049</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Win rate</div>
+          <div class="kpi-val" id="eqWr">45.3<span class="unit">%</span></div>
+          <div class="kpi-bar"><span id="eqWrBar" style="width:45.3%;background:var(--neg)"></span></div>
+          <div class="kpi-sub" id="eqWrSub">24 wins · 29 losses</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Avg hold</div>
+          <div class="kpi-val" id="eqHold">43.7<span class="unit">d</span></div>
+          <div class="kpi-sub">Positional swings</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Verdict</div>
+          <div class="kpi-val serif hi" id="eqVerdict">C−</div>
+          <div class="kpi-sub">Charges &gt; gross gains</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">P&amp;L by stock</div>
+          <div class="card-sub">Ranked — winners up top, laggards below</div>
+        </div>
+        <div class="bucket-list" id="eqStocks"></div>
+      </div>
+
+      <!-- Equity Trades Table (nice-to-have, populated from uploaded data) -->
+      <div class="card" id="eqTradesCard">
+        <div class="card-head">
+          <div class="card-title">Trade log</div>
+          <div class="card-sub" id="eqTradesSub">All equity positions</div>
+        </div>
+        <div class="eq-tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th class="num">Qty</th>
+                <th class="num">Avg Entry</th>
+                <th class="num">Avg Exit</th>
+                <th class="num">P&amp;L</th>
+                <th class="num">Δ%</th>
+                <th class="num">Days held</th>
+                <th>Result</th>
+                <th class="num">Close date</th>
+              </tr>
+            </thead>
+            <tbody id="eqTBody"></tbody>
+          </table>
+          <div class="tbl-foot">
+            <span id="eqTCount">—</span>
+            <span class="muted">Equity positions · data local to browser</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Observation</div>
+          <div class="card-sub">What the equity book is telling you</div>
+        </div>
+        <ul class="insights">
+          <li class="ins neg"><div class="ins-rail"></div><div class="ins-copy"><b>Your winners barely clear costs.</b><span>CAMS and HCLTECH are the only meaningful profitable names. Combined gross gain ₹20,616 — but whole-book charges ate ₹8,049.</span></div></li>
+          <li class="ins neg"><div class="ins-rail"></div><div class="ins-copy"><b>Long holds, thin edge.</b><span>Average hold is 44 days but win rate is only 45%. Compare to F&amp;O's 87.5% — this book isn't pulling its weight.</span></div></li>
+          <li class="ins pos"><div class="ins-rail"></div><div class="ins-copy"><b>Consider F&amp;O on the same themes.</b><span>MAZDOCK and MODEFENCE dragged equity — but defense/PSU plays via F&amp;O (BEL, HAL) printed large with shorter holds.</span></div></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ======== ANALYSIS ======== -->
+    <section class="panel" id="p-analysis" data-screen-label="04 Analysis">
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Intraday vs Positional</div>
+            <div class="card-sub">Head-to-head summary</div>
+          </div>
+          <div class="vs">
+            <div class="vs-col" id="vsIntraCol">
+              <div class="vs-tag">Intraday</div>
+              <div class="vs-pnl pos" id="vsIntraPnl">+₹27,303</div>
+              <div class="vs-row"><span>Win rate</span><b id="vsIntraWr">90.7%</b></div>
+              <div class="vs-row"><span>Trades</span><b id="vsIntraN">54</b></div>
+              <div class="vs-row"><span>Avg / trade</span><b id="vsIntraAvg">₹506</b></div>
+            </div>
+            <div class="vs-divide">
+              <div class="vs-verdict" id="vsVerdict">Positional<br><small>edges ahead</small></div>
+            </div>
+            <div class="vs-col win" id="vsPosiCol">
+              <div class="vs-tag">Positional</div>
+              <div class="vs-pnl pos" id="vsPosiPnl">+₹1,47,538</div>
+              <div class="vs-row"><span>Win rate</span><b id="vsPosiWr">86.8%</b></div>
+              <div class="vs-row"><span>Trades</span><b id="vsPosiN">235</b></div>
+              <div class="vs-row"><span>Avg / trade</span><b id="vsPosiAvg">₹628</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">P&amp;L by stock · Intraday vs Positional</div>
+            <div class="card-sub">Key underlyings broken out by trade type</div>
+          </div>
+          <div class="chart-h200"><canvas id="cIPStock"></canvas></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">CE vs PE — P&amp;L &amp; win rate</div>
+            <div class="card-sub">Option type performance breakdown</div>
+          </div>
+          <div class="chart-h200"><canvas id="cCEPE"></canvas></div>
+          <div class="card-foot" id="cepeFoot">
+            <div><span class="ft-k">CE</span> 98 trades <b class="pos">+₹84,268</b> · 88.8% WR</div>
+            <div><span class="ft-k">PE</span> 58 trades <b class="pos">+₹69,236</b> · 93.1% WR</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">CE vs PE — avg P&amp;L per trade</div>
+            <div class="card-sub">Efficiency per position</div>
+          </div>
+          <div class="chart-h200"><canvas id="cCEPEavg"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Hold duration</div>
+          <div class="card-sub">Where the edge lives — and where it dies</div>
+        </div>
+        <div class="hold-strip" id="holdStrip"></div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Hold duration — win rate &amp; P&amp;L charts</div>
+            <div class="card-sub">Visual breakdown by holding period</div>
+          </div>
+          <div class="chart-h200"><canvas id="cHoldWr"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Hold duration — total P&amp;L</div>
+            <div class="card-sub">Which bucket makes the money</div>
+          </div>
+          <div class="chart-h200"><canvas id="cHoldPnl"></canvas></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Entry hour — win rate heatmap</div>
+            <div class="card-sub">Win rate by market open hour</div>
+          </div>
+          <div class="hours" id="hours"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Entry hour — total P&amp;L</div>
+            <div class="card-sub">Which hours actually make money</div>
+          </div>
+          <div class="chart-h200"><canvas id="cHourPnl"></canvas></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Entry premium bucket</div>
+            <div class="card-sub">OTM vs ATM vs ITM</div>
+          </div>
+          <div class="bucket-list" id="buckets"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Trade scatter — days held × P&amp;L</div>
+            <div class="card-sub">Each dot is one trade · hover for details</div>
+          </div>
+          <div class="chart-h200"><canvas id="cScatter"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Action plan</div>
+          <div class="card-sub">Three changes to unlock more P&amp;L</div>
+        </div>
+        <ol class="actions">
+          <li>
+            <div class="act-n">01</div>
+            <div class="act-body">
+              <b>Stop holding past 14 days.</b>
+              <span>The 15–30d bucket is your only negative region (−₹13,790). Hard-exit on day 14 or when thesis breaks.</span>
+            </div>
+            <div class="act-gain pos">+₹13.8k recovery</div>
+          </li>
+          <li>
+            <div class="act-n">02</div>
+            <div class="act-body">
+              <b>Favor near-ATM entries (₹20–150).</b>
+              <span>Combined <b>₹1,77,093 · 89.9% WR</b> across 210 trades. Deep-OTM &lt; ₹5 is too thin; skip.</span>
+            </div>
+            <div class="act-gain pos">Edge: +0.8σ</div>
+          </li>
+          <li>
+            <div class="act-n">03</div>
+            <div class="act-body">
+              <b>Rethink the equity swing book.</b>
+              <span>Charges are 131% of gross gains. Either size up with conviction or rotate capital into F&amp;O.</span>
+            </div>
+            <div class="act-gain neg">−₹8.0k bleed</div>
+          </li>
+        </ol>
+      </div>
+
+    </section>
+
+    <!-- ======== EDGE & LESSONS ======== -->
+    <section class="panel" id="p-edge" data-screen-label="05 Edge">
+      <div class="trades-head">
+        <div>
+          <div class="eyebrow">Performance intelligence</div>
+          <h2 class="section-h">Edge &amp; Lessons · <span class="muted">computed from your data</span></h2>
+        </div>
+      </div>
+
+      <!-- Strategy comparison -->
+      <div class="two-col" style="margin-bottom:14px">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Strategy P&amp;L comparison</div>
+            <div class="card-sub">Index options vs stock options vs equity delivery</div>
+          </div>
+          <div class="chart-h200"><canvas id="cEdgePnl"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Strategy win rate</div>
+            <div class="card-sub">Where your edge is real vs where it's noise</div>
+          </div>
+          <div class="chart-h200"><canvas id="cEdgeWr"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Strengths -->
+      <div class="eyebrow" style="margin-bottom:12px">Your strengths — what you do consistently well</div>
+      <div class="ins-grid" id="gStrengths"></div>
+
+      <!-- Killers -->
+      <div class="eyebrow" style="margin-bottom:12px;margin-top:8px">Profit killers — what is dragging your results</div>
+      <div class="ins-grid" id="gKillers"></div>
+
+      <!-- Actions -->
+      <div class="eyebrow" style="margin-bottom:12px;margin-top:8px">Action plan — specific changes to make more money</div>
+      <div class="ins-grid" id="gActions"></div>
+
+    </section>
+
+    <!-- ======== MARKET CONTEXT (OHLC Correlation) ======== -->
+    <section class="panel" id="p-market" data-screen-label="06 Market Context">
+
+      <!-- INTRO HEADER -->
+      <div style="background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 8%,var(--surface)),var(--surface));border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:22px;display:flex;align-items:flex-start;gap:20px">
+        <div style="font-size:28px;line-height:1;flex-shrink:0;margin-top:2px">📡</div>
+        <div style="flex:1">
+          <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px">OHLC Cross-Correlation · NSE:NIFTY 50 · Minute data</div>
+          <div style="font-size:17px;font-weight:700;letter-spacing:-.015em;margin-bottom:6px">Your trades mapped against NIFTY's actual daily behaviour</div>
+          <div style="font-size:12.5px;color:var(--ink-2);line-height:1.65;max-width:80ch">
+            Each of your 29 sample trades has been enriched with NIFTY's gap%, first-15-min direction, full-day range, intraday trend, and NIFTY price zone at entry.
+            The patterns below reveal <strong style="color:var(--ink)">when you trade well vs when you give back</strong> — not just in isolation, but in the context of exactly what the market was doing.
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;text-align:center">
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 16px">
+            <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">Trades enriched</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--ink)">29</div>
+          </div>
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 16px">
+            <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">OHLC days</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--accent)">105</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CRITICAL FINDING BANNERS ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:22px">
+
+        <div style="background:color-mix(in srgb,var(--neg) 10%,var(--surface));border:1.5px solid color-mix(in srgb,var(--neg) 30%,var(--border));border-radius:var(--radius);padding:16px 18px">
+          <div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--neg);margin-bottom:8px">🚨 Critical Finding #1</div>
+          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:6px;letter-spacing:-.01em">Big gap-up opens destroy you</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+            When NIFTY gaps up <strong style="color:var(--neg)">&gt;+1%</strong> at open, your win rate drops to <strong style="color:var(--neg)">20%</strong>. These 5 trades alone cost <strong style="color:var(--neg)">−₹48,268</strong>. You're chasing a move that's already happened while IV is spiking.
+          </div>
+        </div>
+
+        <div style="background:color-mix(in srgb,var(--neg) 10%,var(--surface));border:1.5px solid color-mix(in srgb,var(--neg) 30%,var(--border));border-radius:var(--radius);padding:16px 18px">
+          <div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--neg);margin-bottom:8px">🚨 Critical Finding #2</div>
+          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:6px;letter-spacing:-.01em">NIFTY 25k–26k is your losing zone</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+            15 trades entered when NIFTY was <strong style="color:var(--neg)">25,000–26,000</strong>. Net P&L: <strong style="color:var(--neg)">−₹30,668</strong>. This was the Aug–Nov period of market topping and reversal. You kept entering without adjusting to the distribution phase.
+          </div>
+        </div>
+
+        <div style="background:color-mix(in srgb,var(--pos) 8%,var(--surface));border:1.5px solid color-mix(in srgb,var(--pos) 25%,var(--border));border-radius:var(--radius);padding:16px 18px">
+          <div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--pos);margin-bottom:8px">✅ Key Strength</div>
+          <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:6px;letter-spacing:-.01em">Moderate gap-up entries work well</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+            Trades entered when NIFTY gaps up <strong style="color:var(--pos)">+0.3% to +1%</strong> show <strong style="color:var(--pos)">100% win rate</strong> (+₹22,221). The sweet spot: bullish but not euphoric. You read these setups correctly.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── ROW 1: Gap Analysis + NIFTY Zone ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+        <div class="card">
+          <div class="card-head" style="margin-bottom:18px">
+            <div class="card-title">Win Rate &amp; P&amp;L by Gap at Entry</div>
+            <div class="card-sub">What NIFTY was doing the moment you entered</div>
+          </div>
+
+          <!-- Gap-up big -->
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:10px;height:10px;border-radius:2px;background:var(--neg);flex-shrink:0"></div>
+                <span style="font-size:12px;font-weight:600;color:var(--ink)">Big Gap-Up &gt;+1%</span>
+                <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">n=5</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--neg)">20% WR</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neg)">−₹48,268</span>
+              </div>
+            </div>
+            <div style="height:8px;background:var(--bg-2);border-radius:4px;overflow:hidden"><div style="width:20%;height:100%;background:var(--neg);border-radius:4px"></div></div>
+          </div>
+
+          <!-- Gap-up moderate -->
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:10px;height:10px;border-radius:2px;background:var(--pos);flex-shrink:0"></div>
+                <span style="font-size:12px;font-weight:600;color:var(--ink)">Moderate Gap-Up +0.3% to +1%</span>
+                <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">n=7</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--pos)">100% WR</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--pos)">+₹22,221</span>
+              </div>
+            </div>
+            <div style="height:8px;background:var(--bg-2);border-radius:4px;overflow:hidden"><div style="width:100%;height:100%;background:var(--pos);border-radius:4px"></div></div>
+          </div>
+
+          <!-- Gap-down big -->
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:10px;height:10px;border-radius:2px;background:var(--pos);flex-shrink:0"></div>
+                <span style="font-size:12px;font-weight:600;color:var(--ink)">Big Gap-Down &lt;−1%</span>
+                <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">n=1</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--pos)">100% WR</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--pos)">+₹7,553</span>
+              </div>
+            </div>
+            <div style="height:8px;background:var(--bg-2);border-radius:4px;overflow:hidden"><div style="width:100%;height:100%;background:var(--pos);border-radius:4px"></div></div>
+          </div>
+
+          <!-- Gap-down moderate -->
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:10px;height:10px;border-radius:2px;background:var(--accent);flex-shrink:0"></div>
+                <span style="font-size:12px;font-weight:600;color:var(--ink)">Moderate Gap-Down −0.3% to −1%</span>
+                <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">n=6</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--accent)">67% WR</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neg)">−₹11,443</span>
+              </div>
+            </div>
+            <div style="height:8px;background:var(--bg-2);border-radius:4px;overflow:hidden"><div style="width:67%;height:100%;background:var(--accent);border-radius:4px"></div></div>
+          </div>
+
+          <!-- Flat open -->
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:10px;height:10px;border-radius:2px;background:var(--muted-2);flex-shrink:0"></div>
+                <span style="font-size:12px;font-weight:600;color:var(--ink)">Flat Open ±0.3%</span>
+                <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">n=10</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--muted)">60% WR</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neg)">−₹16,662</span>
+              </div>
+            </div>
+            <div style="height:8px;background:var(--bg-2);border-radius:4px;overflow:hidden"><div style="width:60%;height:100%;background:var(--muted-2);border-radius:4px"></div></div>
+          </div>
+
+          <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--ink-2);line-height:1.6">
+            <strong style="color:var(--neg)">Rule to add:</strong> Never enter a new position when NIFTY has already gapped up &gt;1%. The move is priced in. Wait for a pullback or skip the day.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head" style="margin-bottom:18px">
+            <div class="card-title">P&amp;L by NIFTY Level Zone at Entry</div>
+            <div class="card-sub">Which market altitude you trade best in</div>
+          </div>
+          <div class="chart-h240"><canvas id="cZonePnl"></canvas></div>
+          <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:color-mix(in srgb,var(--pos) 8%,var(--surface-2));border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+              <div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Best zone</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--pos)">Below 24k</div>
+              <div style="font-size:11px;color:var(--muted)">100% WR · +₹11,898</div>
+            </div>
+            <div style="background:color-mix(in srgb,var(--neg) 8%,var(--surface-2));border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+              <div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Worst zone</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--neg)">24k–25k</div>
+              <div style="font-size:11px;color:var(--muted)">40% WR · −₹34,460</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── ROW 2: Trend Alignment + Volatility ── -->
+      <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:14px;margin-bottom:14px">
+
+        <div class="card">
+          <div class="card-head" style="margin-bottom:18px">
+            <div class="card-title">NIFTY Trend During Hold — CE &amp; PE Alignment</div>
+            <div class="card-sub">Did the market move in the direction your option needed?</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+            <!-- CE block -->
+            <div>
+              <div style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--accent)">CALL Options (CE)</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border)">
+                <div>
+                  <div style="font-size:12px;color:var(--ink);font-weight:600">NIFTY rose ↑ during hold</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Should help CE · n=7</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--accent)">71% WR</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--neg)">−₹4,571</div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+                <div>
+                  <div style="font-size:12px;color:var(--ink);font-weight:600">NIFTY fell ↓ during hold</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Should hurt CE · n=12</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--accent)">75% WR</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--neg)">−₹8,005</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PE block -->
+            <div>
+              <div style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--gold)">PUT Options (PE)</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border)">
+                <div>
+                  <div style="font-size:12px;color:var(--ink);font-weight:600">NIFTY rose ↑ during hold</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Should hurt PE · n=1</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--pos)">100% WR</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--pos)">+₹1,616</div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+                <div>
+                  <div style="font-size:12px;color:var(--ink);font-weight:600">NIFTY fell ↓ during hold</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Should help PE · n=9</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--neg)">44% WR</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--neg)">−₹31,399</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:color-mix(in srgb,var(--neg) 8%,var(--surface-2));border:1px solid color-mix(in srgb,var(--neg) 20%,var(--border));border-radius:8px;padding:12px 14px">
+            <div style="font-size:11.5px;color:var(--ink);font-weight:600;margin-bottom:4px">🔍 Surprising finding: PE trades are bleeding even when NIFTY falls</div>
+            <div style="font-size:11.5px;color:var(--ink-2);line-height:1.65">
+              Your PE trades underperform even when NIFTY moves in your direction (only 44% WR). This means you're buying PEs too late in the move — IV has already spiked and you're paying inflated premium. You're buying panic, not anticipating it.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head" style="margin-bottom:18px">
+            <div class="card-title">Volatility Profile at Entry vs Exit</div>
+            <div class="card-sub">NIFTY range on the day you entered vs closed</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px">Entry-day NIFTY range</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:11px;color:var(--muted);width:110px;text-align:right">High vol &gt;300 pts</span>
+                  <div style="flex:1;height:22px;background:var(--bg-2);border-radius:4px;overflow:hidden;position:relative">
+                    <div style="position:absolute;inset:0;width:80%;background:color-mix(in srgb,var(--accent) 55%,transparent);display:flex;align-items:center;padding:0 8px">
+                      <span style="font-size:10.5px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">80% WR · n=5</span>
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:11px;color:var(--muted);width:110px;text-align:right">Medium 150–300</span>
+                  <div style="flex:1;height:22px;background:var(--bg-2);border-radius:4px;overflow:hidden;position:relative">
+                    <div style="position:absolute;inset:0;width:61%;background:color-mix(in srgb,var(--accent) 40%,transparent);display:flex;align-items:center;padding:0 8px">
+                      <span style="font-size:10.5px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">61% WR · n=18</span>
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:11px;color:var(--muted);width:110px;text-align:right">Low vol ≤150</span>
+                  <div style="flex:1;height:22px;background:var(--bg-2);border-radius:4px;overflow:hidden;position:relative">
+                    <div style="position:absolute;inset:0;width:67%;background:color-mix(in srgb,var(--accent) 35%,transparent);display:flex;align-items:center;padding:0 8px">
+                      <span style="font-size:10.5px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">67% WR · n=6</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="border-top:1px dashed var(--border);padding-top:14px">
+              <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px">Close-day NIFTY range</div>
+              <div style="display:flex;justify-content:space-between;gap:12px">
+                <div style="text-align:center;flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 8px">
+                  <div style="font-size:10px;color:var(--muted)">Wins exit on</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--pos)">329</div>
+                  <div style="font-size:10px;color:var(--muted)">avg pts range</div>
+                </div>
+                <div style="text-align:center;flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 8px">
+                  <div style="font-size:10px;color:var(--muted)">Losses exit on</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--neg)">186</div>
+                  <div style="font-size:10px;color:var(--muted)">avg pts range</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;color:var(--ink-2);line-height:1.55">
+                You exit winners on <strong style="color:var(--pos)">high-volatility days</strong> (range 329 pts) — you're riding momentum exits well. Losses tend to close on quieter days suggesting you're cutting too early or losses linger.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── ROW 3: Trade-level timeline ── -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head" style="margin-bottom:18px">
+          <div class="card-title">NIFTY Price vs Your Trade Timeline</div>
+          <div class="card-sub">Blue line = NIFTY daily close · Green markers = trade open (win) · Red markers = trade open (loss)</div>
+        </div>
+        <div class="chart-h240"><canvas id="cNiftyTimeline"></canvas></div>
+      </div>
+
+      <!-- ── ROW 4: Trade-level enriched table ── -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head" style="margin-bottom:14px">
+          <div class="card-title">Trade-Level Market Context <span>every trade enriched with NIFTY conditions at entry</span></div>
+        </div>
+        <div style="overflow:auto">
+          <table class="tbl" id="tMarketContext">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Type</th>
+                <th class="num">P&amp;L</th>
+                <th>Result</th>
+                <th class="num">NIFTY at Open</th>
+                <th class="num">Gap %</th>
+                <th>Open Context</th>
+                <th class="num">NIFTY during hold</th>
+                <th>Alignment</th>
+                <th class="num">Avg Range</th>
+              </tr>
+            </thead>
+            <tbody id="tMCBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ROW 5: Multi-entry days + NIFTY ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+        <div class="card">
+          <div class="card-head" style="margin-bottom:16px">
+            <div class="card-title">Dual-Entry Days — NIFTY Context</div>
+            <div class="card-sub">Days you entered multiple trades simultaneously</div>
+          </div>
+
+          <!-- Oct 17 disaster -->
+          <div style="background:color-mix(in srgb,var(--neg) 8%,var(--surface-2));border:1px solid color-mix(in srgb,var(--neg) 25%,var(--border));border-radius:8px;padding:14px 16px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--ink)">17 Oct 2025 — Pair trade gone wrong</div>
+                <div style="font-size:10.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px">NIFTY gap: +1.08% · Day: bear</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--neg)">−₹20,205</div>
+            </div>
+            <div style="font-size:11.5px;color:var(--ink-2);line-height:1.6">
+              You entered <strong>HAL25OCT4800PE + HAL25NOV4700PE</strong> on the same underlying on a big gap-up day. Both lost. Entry on big gap-up with same-side bias = concentrated risk on a frothy opening.
+            </div>
+          </div>
+
+          <!-- Jan 07 partial -->
+          <div style="background:color-mix(in srgb,var(--amber) 8%,var(--surface-2));border:1px solid color-mix(in srgb,var(--amber) 25%,var(--border));border-radius:8px;padding:14px 16px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--ink)">07 Jan 2026 — Mixed result</div>
+                <div style="font-size:10.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px">NIFTY neutral open · NIFTY fell −2.9% over hold</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--neg)">−₹5,802</div>
+            </div>
+            <div style="font-size:11.5px;color:var(--ink-2);line-height:1.6">
+              <strong>HAL26JAN4700CE</strong> won (+₹4,868) while <strong>NIFTY25PE</strong> lost (−₹10,670) when NIFTY fell. The CE win was stock-specific (HAL rallied), the PE should have won on NIFTY falling — but you were holding an OTM PE that expired worthless on a sharp drop.
+            </div>
+          </div>
+
+          <!-- Mar 27 win -->
+          <div style="background:color-mix(in srgb,var(--pos) 8%,var(--surface-2));border:1px solid color-mix(in srgb,var(--pos) 25%,var(--border));border-radius:8px;padding:14px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--ink)">27 Mar 2026 — Strangle win</div>
+                <div style="font-size:10.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px">NIFTY high-vol expiry week · Range 430 pts</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--pos)">+₹4,345</div>
+            </div>
+            <div style="font-size:11.5px;color:var(--ink-2);line-height:1.6">
+              Both NIFTY CE + PE won in the same expiry week. NIFTY made a <strong>430-pt range day</strong> — when you buy a strangle in a genuine high-volatility expiry, it works. This is the correct context for dual-leg entries.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head" style="margin-bottom:18px">
+            <div class="card-title">Where Your P&amp;L Actually Comes From</div>
+            <div class="card-sub">Market conditions that generated real edge vs gave it back</div>
+          </div>
+          <div class="chart-h280"><canvas id="cContextBubble"></canvas></div>
+        </div>
+
+      </div>
+
+      <!-- ── ROW 6: Rules derived from OHLC ── -->
+      <div class="card">
+        <div class="card-head" style="margin-bottom:18px">
+          <div class="card-title">OHLC-Derived Trading Rules <span>derived from your actual trade history vs market data</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" id="ohlcRules"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ============ DATA MODAL ============ -->
+  <div class="modal-wrap" id="dataModal" hidden>
+    <div class="modal-bg" data-close></div>
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">Data source</div>
+          <h3>Load Zerodha CSV</h3>
+        </div>
+        <button class="x" data-close>✕</button>
+      </div>
+      <p class="modal-sub">All parsing happens locally in your browser. Files never leave this device.</p>
+      <div class="upload-grid">
+        <label class="drop">
+          <div class="drop-t">F&amp;O · Tradebook</div>
+          <div class="drop-s">Drop .csv or click</div>
+          <input type="file" accept=".csv" />
+        </label>
+        <label class="drop">
+          <div class="drop-t">F&amp;O · P&amp;L CSV</div>
+          <div class="drop-s">Drop .csv or click</div>
+          <input type="file" accept=".csv" />
+        </label>
+        <label class="drop">
+          <div class="drop-t">Equity · Tradebook</div>
+          <div class="drop-s">Drop .csv or click</div>
+          <input type="file" accept=".csv" />
+        </label>
+        <label class="drop">
+          <div class="drop-t">Equity · P&amp;L CSV</div>
+          <div class="drop-s">Drop .csv or click</div>
+          <input type="file" accept=".csv" />
+        </label>
+      </div>
+      <div class="modal-foot">
+        <span class="muted">Sample data currently loaded · FY 2025-26 · DV1182</span>
+        <button class="btn-primary">Recompute</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TWEAKS ============ -->
+  <div class="tweaks" id="tweaks" hidden>
+    <div class="tw-head">
+      <span>Tweaks</span>
+      <button class="tw-x" id="twClose">✕</button>
+    </div>
+    <div class="tw-row">
+      <label>Theme</label>
+      <div class="seg sm" data-tw="theme">
+        <button class="on" data-val="light">Light</button>
+        <button data-val="dark">Dark</button>
+      </div>
+    </div>
+    <div class="tw-row">
+      <label>Density</label>
+      <div class="seg sm" data-tw="density">
+        <button class="on" data-val="comfortable">Comfortable</button>
+        <button data-val="compact">Compact</button>
+      </div>
+    </div>
+    <div class="tw-row">
+      <label>Accent</label>
+      <div class="swatches" data-tw="accent">
+        <button class="on" data-val="amber" style="--s:#b5651d"></button>
+        <button data-val="forest" style="--s:#2f5d3f"></button>
+        <button data-val="indigo" style="--s:#3b4d9e"></button>
+        <button data-val="rose" style="--s:#a03b5c"></button>
+      </div>
+    </div>
+    <div class="tw-row">
+      <label>Hero number</label>
+      <div class="seg sm" data-tw="hero">
+        <button class="on" data-val="combined">Combined</button>
+        <button data-val="fo">F&amp;O only</button>
+        <button data-val="eq">Equity only</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/ta-config.js"></script>
+  <script src="assets/js/ta-seed.js"></script>
+  <script src="assets/js/ta-render.js"></script>
+  <script src="assets/js/ta-csv-import.js"></script>
+</body>
+</html>
