@@ -48,25 +48,29 @@ function render() {
     scales:{x:{ticks:{color:'#9ca3af',font:cFont,maxTicksLimit:10,maxRotation:45},grid:{color:'#f3f4f6'}},
             y:{ticks:{color:'#9ca3af',font:cFont,callback:v=>'₹'+fL(v)},grid:{color:'#f3f4f6'}}}}});
 
-  // ── STOCK CHARTS ─────────────────────────────────────────────
-  const stocks  = F.by_stock;
-  const sLabels = stocks.map(s=>s.stock);
-  const sPnls   = stocks.map(s=>s.total_pnl);
-  mk('cStock',{type:'bar',data:{labels:sLabels,datasets:[{data:sPnls,
-    backgroundColor:sPnls.map(v=>v>=0?'rgba(15,155,110,.65)':'rgba(214,64,69,.65)'),
-    borderColor:sPnls.map(v=>v>=0?'#0f9b6e':'#d64045'),borderWidth:1,borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
-    plugins:{legend:{display:false},tooltip:{...tip,callbacks:{label:c=>`  ₹${fL(c.raw)} | ${stocks[c.dataIndex].count} trades`}}},
-    scales:{x:{ticks:{color:'#9ca3af',font:cFont,callback:v=>'₹'+fL(v)},grid:{color:'#f3f4f6'}},
-            y:{ticks:{color:'#374151',font:{family:"'DM Sans'",size:10}},grid:{color:'#f3f4f6'}}}}});
-
-  mk('cStockWr',{type:'bar',data:{labels:sLabels,datasets:[{data:stocks.map(s=>s.win_rate),
-    backgroundColor:stocks.map(s=>s.win_rate>=80?'rgba(15,155,110,.65)':s.win_rate>=60?'rgba(197,130,10,.65)':'rgba(214,64,69,.65)'),
-    borderWidth:1,borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
-    plugins:{legend:{display:false},tooltip:{...tip,callbacks:{label:c=>`  ${c.raw}% | ${stocks[c.dataIndex].wins}W/${stocks[c.dataIndex].count-stocks[c.dataIndex].wins}L`}}},
-    scales:{x:{min:0,max:100,ticks:{color:'#9ca3af',font:cFont,callback:v=>v+'%'},grid:{color:'#f3f4f6'}},
-            y:{ticks:{color:'#374151',font:{family:"'DM Sans'",size:10}},grid:{color:'#f3f4f6'}}}}});
+  // ── STOCK CARDS ──────────────────────────────────────────────
+  const stocks = [...F.by_stock].sort((a,b)=>b.total_pnl - a.total_pnl);
+  document.getElementById('stockCards').innerHTML = stocks.map(s=>{
+    const winPct  = s.count ? (s.wins/s.count*100) : 0;
+    const lossPct = 100 - winPct;
+    const losses  = s.count - s.wins;
+    const wrCls   = s.win_rate>=80?'sc-wr-g':s.win_rate>=60?'sc-wr-y':'sc-wr-r';
+    const pnlSign = s.total_pnl>=0?'pos':'neg';
+    return `<div class="stock-card sc-${pnlSign}">
+      <div class="sc-sym">${s.stock}</div>
+      <div class="sc-pnl sc-pnl-${pnlSign}">${s.total_pnl>=0?'+':'-'}₹${fL(Math.abs(s.total_pnl))}</div>
+      <div class="sc-bar">
+        <div class="sc-bar-w" style="width:${winPct}%"></div>
+        <div class="sc-bar-l" style="width:${lossPct}%"></div>
+      </div>
+      <div class="sc-meta">
+        <span class="${wrCls}">${s.win_rate}%</span>
+        <span class="sc-wl">${s.wins}W · ${losses}L</span>
+        <span class="sc-cnt">${s.count}T</span>
+      </div>
+      ${s.avg_days>0?`<div class="sc-days">avg ${s.avg_days}d hold</div>`:''}
+    </div>`;
+  }).join('');
 
   // ── ENTRY PRICE CHARTS ───────────────────────────────────────
   const pb = F.by_price.map(p=>({...p,lbl:p.price_bucket.replace(/^[A-Z] /,'')}));
