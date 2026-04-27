@@ -9,7 +9,7 @@
   const MMAP = {JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
   const LOT_SIZES = {NIFTY:75,SENSEX:10,INFY:400,BEL:1425,HAL:150,OFSS:75,CAMS:150,HCLTECH:350,BANKEX:15,BANKNIFTY:25};
 
-  const state = { foRaw:null, eqRaw:null, foPnl:null, eqPnl:null };
+  const state = { foRaw:null, eqRaw:null, foPnl:null, eqPnl:null, niftyOhlc:null };
 
   // ---------- PARSERS ----------
   function parseCSV(text){
@@ -50,6 +50,64 @@
       }
     }
     return { charges, positions };
+  }
+
+  // Parse minute-level NIFTY OHLC JSON (Zerodha/KiteConnect style) into daily bars.
+  // Expected shape: { "candles": { "YYYY-MM-DD": [ {time,open,high,low,close,volume}, ... ] } }
+  // Aggregates each day's minutes → { open:first, high:max, low:min, close:last }
+  // Then computes range, daily ret%, and gap% vs previous day's close.
+  function parseNiftyOhlc(text) {
+    const raw = JSON.parse(text);
+    const candles = raw.candles;
+    if (!candles || typeof candles !== 'object') throw new Error('Expected { candles: { "YYYY-MM-DD": [...] } }');
+
+    const dates = Object.keys(candles).sort();
+    const rows = dates.map(dt => {
+      const mins = candles[dt];
+      if (!Array.isArray(mins) || !mins.length) return null;
+      // sort minutes chronologically just in case
+      const sorted = [...mins].sort((a, b) => (a.time < b.time ? -1 : 1));
+      return {
+        dt,
+        open:  +sorted[0].open,
+        high:  Math.max(...sorted.map(m => m.high)),
+        low:   Math.min(...sorted.map(m => m.low)),
+        close: +sorted[sorted.length - 1].close,
+      };
+    }).filter(Boolean);
+
+    const out = {}; let prev = 0;
+    rows.forEach(r => {
+      const range = +(r.high - r.low).toFixed(2);
+      const ret   = prev ? +((r.close - prev) / prev * 100).toFixed(3) : 0;
+      const gap   = prev ? +((r.open  - prev) / prev * 100).toFixed(3) : 0;
+      out[r.dt]   = { open:r.open, high:r.high, low:r.low, close:r.close, range, ret, gap };
+      prev = r.close;
+    });
+    return out;
+  }
+
+  // Enrich F&O trades with NIFTY OHLC context
+  function enrichWithNifty(trades, nifty) {
+    const dates = Object.keys(nifty).sort();
+    const nearest = d => dates.find(x => x >= d) || dates[dates.length-1];
+    const zone = p => p < 23000 ? 'below_23k' : p < 24000 ? '23k_24k' : p < 25000 ? '24k_25k' : p < 26000 ? '25k_26k' : 'above_26k';
+    const ctx  = g => g > 1 ? 'big_gap_up' : g > 0.3 ? 'gap_up' : g < -1 ? 'big_gap_down' : g < -0.3 ? 'gap_down' : 'neutral_open';
+
+    return trades.map(t => {
+      const od = nifty[nearest(t.open_date)] || {};
+      const cd = nifty[nearest(t.close||t.open_date)] || {};
+      const span = dates.filter(d => d >= t.open_date && d <= (t.close||t.open_date));
+      const avgRange = span.length ? +(span.reduce((a,d)=>a+(nifty[d].range||0),0)/span.length).toFixed(1) : od.range||0;
+      const retDuring = od.open ? +((cd.close - od.open) / od.open * 100).toFixed(2) : 0;
+      return { ...t,
+        od_nifty_ret:od.ret||0, od_nifty_gap:od.gap||0, od_nifty_f15:0,
+        od_nifty_range:od.range||0, od_nifty_open:od.open||0,
+        od_nifty_dir:(od.ret||0)>0?'bull':'bear',
+        cd_nifty_ret:cd.ret||0, nifty_ret_during:retDuring,
+        avg_range_during:avgRange, market_ctx:ctx(od.gap||0), nifty_zone:zone(od.open||0)
+      };
+    });
   }
 
   function parseFoSymbol(sym){
@@ -246,6 +304,11 @@
     const eqLosses = eqT.length - eqWins;
     const eqAvgHold = eqT.length ? +(eqT.reduce((a,t)=>a+t.d,0)/eqT.length).toFixed(1) : 0;
 
+    // Enrich F&O trades with NIFTY OHLC if uploaded
+    const enrichedTrades = (state.niftyOhlc && foT.length)
+      ? enrichWithNifty(foT, state.niftyOhlc)
+      : null;
+
     // Use fallback seed data for sections not covered by uploaded CSVs
     const prev = window.SEED;
 
@@ -268,7 +331,9 @@
         stocks: eqStocks.length ? eqStocks : prev.equity.stocks,
         trades: eqT
       },
-      extras: { best, worst, totalPositions: foT.length, wins, losses, winRate: Math.round(wins/Math.max(foT.length,1)*1000)/10 }
+      extras: { best, worst, totalPositions: foT.length, wins, losses, winRate: Math.round(wins/Math.max(foT.length,1)*1000)/10 },
+      enrichedTrades: enrichedTrades || prev?.enrichedTrades || null,
+      niftyDaily: state.niftyOhlc || prev?.niftyDaily || null
     };
 
     console.log('[eq] SEED.equity:', JSON.stringify(window.SEED.equity, null, 2));
@@ -326,6 +391,11 @@
     wireDrop(1, text => { state.foPnl = parsePnlCSV(text); return `${Object.keys(state.foPnl.positions).length} symbols · ₹${Math.round(state.foPnl.charges)} charges`; });
     wireDrop(2, text => { state.eqRaw = parseCSV(text); return `${state.eqRaw.length} rows`; });
     wireDrop(3, text => { state.eqPnl = parsePnlCSV(text); return `${Object.keys(state.eqPnl.positions).length} symbols`; });
+    wireDrop(4, (text, file) => {
+      try { state.niftyOhlc = parseNiftyOhlc(text); }
+      catch(e) { throw new Error('Invalid JSON — ' + e.message); }
+      return `${Object.keys(state.niftyOhlc).length} trading days`;
+    });
     const btn = document.querySelector('#dataModal .btn-primary');
     if (btn){ btn.addEventListener('click', computeAndApply); btn.textContent = 'Compute & load'; }
     updateComputeEnabled();
