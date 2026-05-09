@@ -10,48 +10,66 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="stylesheet" href="assets/css/trade_analytics.css">
 </head>
-<body data-theme="light" data-density="comfortable">
+<body data-theme="dark" data-mood="bloomberg" data-density="standard">
 
-  <!-- ============ TOP BAR ============ -->
-  <header class="topbar">
-    <div class="tb-left">
-      <div class="mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M3 17 L9 11 L13 14 L21 5" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="21" cy="5" r="1.5" fill="currentColor" stroke="none"/>
-        </svg>
-      </div>
-      <div class="tb-titles">
-        <div class="tb-eyebrow">Account · DV1182</div>
-        <div class="tb-title">Trade Analytics</div>
-      </div>
+  <!-- ============ CHROME ============ -->
+  <div class="chrome">
+    <div class="lights"><span></span><span></span><span></span></div>
+    <div class="chrome-t"><b>TA</b>Trade Analytics · DV1182</div>
+    <div class="chrome-meta">
+      <span><span class="live-dot"></span>FY 25–26 · LIVE</span>
+      <span class="muted" id="istClock">—</span>
     </div>
-
-    <nav class="tb-tabs" role="tablist">
-      <button class="tb-tab active" data-tab="overview" role="tab">Overview</button>
-      <button class="tb-tab" data-tab="trades" role="tab">Trades</button>
-      <button class="tb-tab" data-tab="equity" role="tab">Equity</button>
-      <button class="tb-tab" data-tab="analysis" role="tab">Analysis</button>
-      <button class="tb-tab" data-tab="edge" role="tab">Edge &amp; Lessons</button>
-      <button class="tb-tab" data-tab="market" role="tab" style="color:var(--accent);font-weight:700">📡 Market Context</button>
-    </nav>
-
-    <div class="tb-right">
-      <div class="tb-period">
-        <span class="tb-period-dot"></span>
-        <span>FY 2025—26</span>
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4 L5 7 L8 4" stroke-linecap="round"/></svg>
+    <div class="chrome-actions">
+      <div class="theme-switch" id="themeSwitch" role="group" aria-label="Theme">
+        <button data-mood="bloomberg" class="on" title="Bloomberg · near-black terminal">
+          <span class="theme-swatch bloomberg"></span>Bloomberg
+        </button>
+        <button data-mood="paper" title="Paper · daytime broker sheet">
+          <span class="theme-swatch paper"></span>Paper
+        </button>
+        <button data-mood="carbon" title="Carbon · warm dark, amber accents">
+          <span class="theme-swatch carbon"></span>Carbon
+        </button>
       </div>
-      <button class="tb-icon" id="btnData" title="Load / replace data">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 11 V13 A1 1 0 0 0 3 14 H13 A1 1 0 0 0 14 13 V11 M8 2 V10 M4.5 6.5 L8 10 L11.5 6.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Data</span>
+      <button class="btn-ghost" id="btnExport" title="Export current view">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M8 10V2M8 10l3-3M8 10l-3-3M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/></svg>
+        Export
       </button>
-      <button class="tb-icon" id="btnTheme" title="Toggle theme">
-        <svg class="ic-sun" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="3"/><path d="M8 1 V2.5 M8 13.5 V15 M1 8 H2.5 M13.5 8 H15 M3 3 L4 4 M12 12 L13 13 M3 13 L4 12 M12 4 L13 3" stroke-linecap="round"/></svg>
-        <svg class="ic-moon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.5 9.5 A5.5 5.5 0 0 1 6.5 2.5 A6 6 0 1 0 13.5 9.5 Z" stroke-linejoin="round"/></svg>
+      <button class="btn-chrome-primary" id="btnData" title="Upload tradebook">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><path d="M8 12V2M8 2 5 5M8 2l3 3M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/></svg>
+        Upload data
       </button>
     </div>
-  </header>
+  </div>
+
+  <!-- ============ TICKER TAPE (visible when pulse=live) ============ -->
+  <div class="ticker-tape" aria-hidden="true">
+    <div class="ticker-track">
+      <span>NIFTY <b>24,812</b></span><span class="sep">·</span>
+      <span>BANKNIFTY <b>52,184</b></span><span class="sep">·</span>
+      <span>RELIANCE <b>1,284</b></span><span class="sep">·</span>
+      <span>TCS <b>4,108</b></span><span class="sep">·</span>
+      <span>HDFCBANK <b>1,694</b></span><span class="sep">·</span>
+      <span>INFY <b>1,612</b></span><span class="sep">·</span>
+      <span>ICICIBANK <b>1,142</b></span><span class="sep">·</span>
+      <span>TATAMOTORS <b>912</b></span><span class="sep">·</span>
+      <span>NIFTY <b>24,812</b></span><span class="sep">·</span>
+      <span>BANKNIFTY <b>52,184</b></span><span class="sep">·</span>
+      <span>RELIANCE <b>1,284</b></span><span class="sep">·</span>
+      <span>TCS <b>4,108</b></span><span class="sep">·</span>
+    </div>
+  </div>
+
+  <!-- ============ TABS ============ -->
+  <nav class="tb-tabs" role="tablist">
+    <button class="tb-tab active" data-tab="overview" role="tab">Overview</button>
+    <button class="tb-tab" data-tab="trades" role="tab">Trades</button>
+    <button class="tb-tab" data-tab="equity" role="tab">Equity</button>
+    <button class="tb-tab" data-tab="analysis" role="tab">Analysis</button>
+    <button class="tb-tab" data-tab="edge" role="tab">Edge &amp; Lessons</button>
+    <button class="tb-tab" data-tab="market" role="tab">Market Context</button>
+  </nav>
 
   <!-- ============ MAIN ============ -->
   <main class="page">
@@ -114,13 +132,20 @@
     <!-- ======== TRADES ======== -->
     <section class="panel" id="p-trades" data-screen-label="02 Trades">
       <div class="trades-head">
-        <div><div class="eyebrow">Positions</div><h2 class="section-h">All F&amp;O trades · <span class="muted" id="tradesCount">—</span></h2></div>
+        <div><div class="eyebrow">Positions</div><h2 class="section-h">F&amp;O trades · <span class="muted" id="tradesCount">—</span></h2></div>
         <div class="trades-ctrl">
           <div class="search"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M11 11 L14 14" stroke-linecap="round"/></svg><input id="tSearch" placeholder="Search symbol or stock…" /></div>
           <div class="seg" data-filter="type"><button class="on" data-val="">All</button><button data-val="CE">CE</button><button data-val="PE">PE</button></div>
           <div class="seg" data-filter="win"><button class="on" data-val="">Result</button><button data-val="win">Wins</button><button data-val="loss">Losses</button></div>
           <div class="seg" data-filter="kind"><button class="on" data-val="">Any</button><button data-val="intra">Intraday</button><button data-val="pos">Positional</button></div>
         </div>
+      </div>
+      <div class="kpi-row" id="foKpis">
+        <div class="kpi"><div class="kpi-lbl">Gross P&amp;L</div><div class="kpi-val" id="foGross">—<span class="unit">₹</span></div><div class="kpi-sub">Before charges</div></div>
+        <div class="kpi"><div class="kpi-lbl">Net after charges</div><div class="kpi-val" id="foNet">—<span class="unit">₹</span></div><div class="kpi-sub" id="foChg">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Win rate</div><div class="kpi-val" id="foWr">—<span class="unit">%</span></div><div class="kpi-bar"><span id="foWrBar" style="width:0%"></span></div><div class="kpi-sub" id="foWrSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Avg P&amp;L / trade</div><div class="kpi-val" id="foAvg">—<span class="unit">₹</span></div><div class="kpi-sub" id="foAvgSub">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Verdict</div><div class="kpi-val serif hi" id="foVerdict">—</div><div class="kpi-sub" id="foVerdictSub">—</div></div>
       </div>
       <div class="tbl-wrap">
         <table class="tbl">
@@ -263,7 +288,6 @@
   <!-- ============ TWEAKS ============ -->
   <div class="tweaks" id="tweaks" hidden>
     <div class="tw-head"><span>Tweaks</span><button class="tw-x" id="twClose">✕</button></div>
-    <div class="tw-row"><label>Theme</label><div class="seg sm" data-tw="theme"><button class="on" data-val="light">Light</button><button data-val="dark">Dark</button></div></div>
     <div class="tw-row"><label>Density</label><div class="seg sm" data-tw="density"><button class="on" data-val="comfortable">Comfortable</button><button data-val="compact">Compact</button></div></div>
     <div class="tw-row"><label>Accent</label><div class="swatches" data-tw="accent"><button class="on" data-val="amber" style="--s:#b5651d"></button><button data-val="forest" style="--s:#2f5d3f"></button><button data-val="indigo" style="--s:#3b4d9e"></button><button data-val="rose" style="--s:#a03b5c"></button></div></div>
     <div class="tw-row"><label>Hero number</label><div class="seg sm" data-tw="hero"><button class="on" data-val="combined">Combined</button><button data-val="fo">F&amp;O only</button><button data-val="eq">Equity only</button></div></div>
