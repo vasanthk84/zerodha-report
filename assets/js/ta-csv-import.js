@@ -272,24 +272,32 @@
     });
     console.log('[eq] built trades:', eqT.length);
 
-    // ---- Accumulate across FY imports: merge new trades with existing ----
-    window.SEED_MASTER = null; // reset FY filter state on each fresh import
+    // ---- Accumulate across FY imports: symbol-level merge ----
+    // New CSV is authoritative for every symbol it contains.
+    // Old trades whose symbols are NOT in the new CSV are kept (different FY/period).
+    // Charges are prorated: old charges kept only for the old trades that survive.
+    window.SEED_MASTER = null;
     if (window.TA) window.TA._fyActive = '';
     const prev = window.SEED;
 
     const prevFoTrades = (prev && prev.trades) || [];
-    const prevFoKeys = new Set(prevFoTrades.map(t => `${t.sym}|${t.open_date}|${t.close}`));
-    const newFoTrades = foT.filter(t => !prevFoKeys.has(`${t.sym}|${t.open_date}|${t.close}`));
-    const mergedFoT = [...prevFoTrades, ...newFoTrades].sort((a, b) => a.close.localeCompare(b.close));
+    const newFoSyms = new Set(foT.map(t => t.sym));
+    const prevFoKept = prevFoTrades.filter(t => !newFoSyms.has(t.sym));
+    const mergedFoT = [...prevFoKept, ...foT].sort((a, b) => a.close.localeCompare(b.close));
 
     const prevEqTrades = (prev && prev.equity && prev.equity.trades) || [];
-    const prevEqKeys = new Set(prevEqTrades.map(t => `${t.sym}|${t.close}|${String(t.pnl)}`));
-    const newEqTrades = eqT.filter(t => !prevEqKeys.has(`${t.sym}|${t.close}|${String(t.pnl)}`));
-    const mergedEqT = [...prevEqTrades, ...newEqTrades];
+    const newEqSyms = new Set(eqT.map(t => t.sym));
+    const prevEqKept = prevEqTrades.filter(t => !newEqSyms.has(t.sym));
+    const mergedEqT = [...prevEqKept, ...eqT];
 
-    // Charges accumulate only when new trades are actually added
-    const charges_fo = ((prev && prev.hero && prev.hero.fo_charges) || 0) + (newFoTrades.length > 0 ? foPnl.charges || 0 : 0);
-    const charges_eq = ((prev && prev.hero && prev.hero.eq_charges) || 0) + (newEqTrades.length > 0 ? eqPnl.charges || 0 : 0);
+    // Charges: new CSV covers its symbols; old charges kept proportionally for surviving old trades
+    const prevFoCharges = (prev && prev.hero && prev.hero.fo_charges) || 0;
+    const foKeptRatio = prevFoTrades.length > 0 ? prevFoKept.length / prevFoTrades.length : 0;
+    const charges_fo = Math.round(foKeptRatio * prevFoCharges) + (foPnl.charges || 0);
+
+    const prevEqCharges = (prev && prev.hero && prev.hero.eq_charges) || 0;
+    const eqKeptRatio = prevEqTrades.length > 0 ? prevEqKept.length / prevEqTrades.length : 0;
+    const charges_eq = Math.round(eqKeptRatio * prevEqCharges) + (eqPnl.charges || 0);
 
     // Aggregations
     const by = (rows, key) => {
