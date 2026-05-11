@@ -381,6 +381,8 @@
 
     // Trigger full redraw
     if (window.DASHBOARD_REDRAW) window.DASHBOARD_REDRAW();
+    // Persist to Upstash Redis (no-op when running locally as file://)
+    if (window.TA && window.TA.saveSeed) window.TA.saveSeed();
     // Close modal
     document.getElementById('dataModal').hidden = true;
   }
