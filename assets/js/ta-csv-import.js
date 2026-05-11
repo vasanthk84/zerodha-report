@@ -303,37 +303,37 @@
     }).sort((a, b) => a._ord - b._ord);
 
     let cum = 0;
-    const cumulative = foT.map(t => (cum += t.pnl, Math.round(cum)));
+    const cumulative = mergedFoT.map(t => (cum += t.pnl, Math.round(cum)));
     if (!cumulative.length) cumulative.push(0);
 
-    const byStock = by(foT, 'stk').map(s => ({ sym: s.key, pnl: s.pnl, wr: s.wr, n: s.n, wins: s.wins, avgD: s.avgD }))
+    const byStock = by(mergedFoT, 'stk').map(s => ({ sym: s.key, pnl: s.pnl, wr: s.wr, n: s.n, wins: s.wins, avgD: s.avgD }))
       .sort((a, b) => b.pnl - a.pnl);
 
     const holdOrd = { 'Intraday': 0, '1–2 days': 1, '3–7 days': 2, '8–14 d': 3, '15–30 d': 4, '30 d +': 5 };
-    const byHold = by(foT, 'hold_bucket').map(h => ({
+    const byHold = by(mergedFoT, 'hold_bucket').map(h => ({
       k: h.key, n: h.n, wr: h.wr, pnl: h.pnl,
       rating: h.pnl < 0 ? 'bad' : h.wr >= 85 ? 'good' : 'mid'
     })).sort((a, b) => (holdOrd[a.k] ?? 9) - (holdOrd[b.k] ?? 9));
 
-    const byHour = by(foT, 'open_hour').map(h => ({
+    const byHour = by(mergedFoT, 'open_hour').map(h => ({
       h: String(h.key).padStart(2, '0') + ':00', n: h.n, wr: h.wr, _ord: parseInt(h.key)
     })).sort((a, b) => a._ord - b._ord);
 
     const pbOrd = { 'Deep OTM': 0, 'OTM': 1, 'Near ATM': 2, 'ATM': 3, 'ITM': 4 };
-    const byBucket = by(foT, 'price_bucket').map(b => {
-      const item = foT.find(t => t.price_bucket === b.key);
+    const byBucket = by(mergedFoT, 'price_bucket').map(b => {
+      const item = mergedFoT.find(t => t.price_bucket === b.key);
       return { k: b.key, sub: item ? item.price_sub : '', n: b.n, pnl: b.pnl, wr: b.wr };
     }).sort((a, b) => (pbOrd[a.k] ?? 9) - (pbOrd[b.k] ?? 9));
 
-    const cepe = by(foT, 'type').filter(t => t.key === 'CE' || t.key === 'PE')
+    const cepe = by(mergedFoT, 'type').filter(t => t.key === 'CE' || t.key === 'PE')
       .map(t => ({ t: t.key, n: t.n, pnl: t.pnl, wr: t.wr, avg: Math.round(t.pnl / Math.max(t.n, 1)) }));
 
-    const best = foT.length ? foT.reduce((a, b) => b.pnl > a.pnl ? b : a) : null;
-    const worst = foT.length ? foT.reduce((a, b) => b.pnl < a.pnl ? b : a) : null;
+    const best = mergedFoT.length ? mergedFoT.reduce((a, b) => b.pnl > a.pnl ? b : a) : null;
+    const worst = mergedFoT.length ? mergedFoT.reduce((a, b) => b.pnl < a.pnl ? b : a) : null;
 
-    // Equity aggregation: by symbol
+    // Equity aggregation: by symbol — use merged set
     const eqByStock = {};
-    eqT.forEach(t => {
+    mergedEqT.forEach(t => {
       if (!eqByStock[t.sym]) eqByStock[t.sym] = { sym: t.sym, pnl: 0, n: 0, wins: 0 };
       eqByStock[t.sym].pnl += t.pnl; eqByStock[t.sym].n++; if (t.win) eqByStock[t.sym].wins++;
     });
@@ -341,40 +341,33 @@
       sym: s.sym, pnl: Math.round(s.pnl), n: s.n,
       wr: Math.round(s.wins / Math.max(s.n, 1) * 1000) / 10
     })).sort((a, b) => b.pnl - a.pnl);
-    const eqWins = eqT.filter(t => t.win).length;
-    const eqLosses = eqT.length - eqWins;
-    const eqAvgHold = eqT.length ? +(eqT.reduce((a, t) => a + t.d, 0) / eqT.length).toFixed(1) : 0;
+    const eqWins = mergedEqT.filter(t => t.win).length;
+    const eqLosses = mergedEqT.length - eqWins;
+    const eqAvgHold = mergedEqT.length ? +(mergedEqT.reduce((a, t) => a + t.d, 0) / mergedEqT.length).toFixed(1) : 0;
 
     // Enrich F&O trades with NIFTY OHLC if uploaded
-    const enrichedTrades = (state.niftyOhlc && foT.length)
-      ? enrichWithNifty(foT, state.niftyOhlc)
+    const enrichedTrades = (state.niftyOhlc && mergedFoT.length)
+      ? enrichWithNifty(mergedFoT, state.niftyOhlc)
       : null;
-
-    // Use fallback seed data for sections not covered by uploaded CSVs
-    const prev = window.SEED;
 
     window.SEED = {
       meta: { client: 'Uploaded', period: 'Your data' },
       hero: { combined, combinedPct: 0, fo_net: foNet, fo_gross: foGross, fo_charges: charges_fo, eq_net: eqNet, eq_gross: eqGross, eq_charges: charges_eq },
-      monthly: monthly.length ? monthly : prev.monthly,
-      cumulative: cumulative.length > 1 ? cumulative : prev.cumulative,
-      stocks: byStock.length ? byStock.slice(0, 12) : prev.stocks,
-      byHold: byHold.length ? byHold : prev.byHold,
-      byHour: byHour.length ? byHour : prev.byHour,
-      byBucket: byBucket.length ? byBucket : prev.byBucket,
-      cepe: cepe.length ? cepe : prev.cepe,
-      trades: foT.length ? foT.map(t => ({ sym: t.sym, stk: t.stk, type: t.type, entry: t.entry, exit: t.exit, pnl: t.pnl, pct: t.pct, d: t.d, k: t.k, win: t.win, close: t.close, open_date: t.open_date, lots: t.lots, open_hour: t.open_hour })) : prev.trades,
+      monthly, cumulative,
+      stocks: byStock.slice(0, 12),
+      byHold, byHour, byBucket, cepe,
+      trades: mergedFoT.map(t => ({ sym: t.sym, stk: t.stk, type: t.type, entry: t.entry, exit: t.exit, pnl: t.pnl, pct: t.pct, d: t.d, k: t.k, win: t.win, close: t.close, open_date: t.open_date, lots: t.lots, open_hour: t.open_hour, month_label: t.month_label, hold_bucket: t.hold_bucket, price_bucket: t.price_bucket, price_sub: t.price_sub })),
       equity: {
         gross: Math.round(eqGross), net: Math.round(eqNet), charges: Math.round(charges_eq),
         wins: eqWins, losses: eqLosses,
-        wr: Math.round(eqWins / Math.max(eqT.length, 1) * 1000) / 10,
-        avgHold: eqAvgHold, total: eqT.length,
-        stocks: eqStocks.length ? eqStocks : prev.equity.stocks,
-        trades: eqT
+        wr: Math.round(eqWins / Math.max(mergedEqT.length, 1) * 1000) / 10,
+        avgHold: eqAvgHold, total: mergedEqT.length,
+        stocks: eqStocks,
+        trades: mergedEqT
       },
-      extras: { best, worst, totalPositions: foT.length, wins, losses, winRate: Math.round(wins / Math.max(foT.length, 1) * 1000) / 10 },
-      enrichedTrades: enrichedTrades || prev?.enrichedTrades || null,
-      niftyDaily: state.niftyOhlc || prev?.niftyDaily || null
+      extras: { best, worst, totalPositions: mergedFoT.length, wins, losses, winRate: Math.round(wins / Math.max(mergedFoT.length, 1) * 1000) / 10 },
+      enrichedTrades: enrichedTrades || null,
+      niftyDaily: state.niftyOhlc || null
     };
 
     console.log('[eq] SEED.equity:', JSON.stringify(window.SEED.equity, null, 2));
