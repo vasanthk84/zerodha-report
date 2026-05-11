@@ -8,8 +8,7 @@ function getRedis() {
   if (_redis) return _redis;
   const url   = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  console.log('[api/seed] url_set:', !!url, 'url_len:', (url || '').length, 'token_set:', !!token, 'token_len:', (token || '').length);
-  if (!url || !token) throw new Error(`Env vars missing — url:${!!url} token:${!!token} keys:${Object.keys(process.env).filter(k=>k.startsWith('UPSTASH')).join(',')}`);
+  if (!url || !token) throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set in Vercel env vars');
   _redis = new Redis({ url, token });
   return _redis;
 }
