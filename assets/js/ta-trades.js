@@ -12,6 +12,54 @@
     }[t] || '';
   }
 
+  function renderTradesKpis() {
+    const S = window.SEED; if (!S) return;
+    const h = S.hero, e = S.extras || {}, trades = S.trades || [];
+
+    const gross = h.fo_gross || 0;
+    const net   = h.fo_net   || 0;
+    const chg   = h.fo_charges || 0;
+    const wr    = e.winRate  || 0;
+    const wins  = e.wins     || 0;
+    const losses = e.losses  || 0;
+    const total = e.totalPositions || trades.length || 0;
+    const avg   = total > 0 ? Math.round(net / total) : 0;
+
+    const fmt = v => (v >= 0 ? '+' : '−') + '₹' + Math.abs(Math.round(v)).toLocaleString('en-IN');
+    const cls = v => v >= 0 ? 'pos' : 'neg';
+
+    const foGross = document.getElementById('foGross');
+    if (foGross) { foGross.innerHTML = `<span class="${cls(gross)}">${fmt(gross)}</span><span class="unit">₹</span>`; }
+
+    const foNet = document.getElementById('foNet');
+    if (foNet) { foNet.innerHTML = `<span class="${cls(net)}">${fmt(net)}</span><span class="unit">₹</span>`; }
+
+    const foChg = document.getElementById('foChg');
+    if (foChg) foChg.textContent = `Charges ₹${Math.round(chg).toLocaleString('en-IN')}`;
+
+    const foWr = document.getElementById('foWr');
+    if (foWr) foWr.innerHTML = `${wr}<span class="unit">%</span>`;
+
+    const foWrBar = document.getElementById('foWrBar');
+    if (foWrBar) foWrBar.style.width = wr + '%';
+
+    const foWrSub = document.getElementById('foWrSub');
+    if (foWrSub) foWrSub.textContent = `${wins} wins · ${losses} losses`;
+
+    const foAvg = document.getElementById('foAvg');
+    if (foAvg) { foAvg.innerHTML = `<span class="${cls(avg)}">${fmt(avg)}</span><span class="unit">₹</span>`; }
+
+    const foAvgSub = document.getElementById('foAvgSub');
+    if (foAvgSub) foAvgSub.textContent = `Across ${total} position${total !== 1 ? 's' : ''}`;
+
+    const grade = wr >= 90 ? 'A+' : wr >= 85 ? 'A' : wr >= 80 ? 'A−' : wr >= 75 ? 'B+' : wr >= 70 ? 'B' : wr >= 65 ? 'B−' : 'C';
+    const foVerdict = document.getElementById('foVerdict');
+    if (foVerdict) foVerdict.innerHTML = `<span class="serif hi">${grade}</span>`;
+
+    const foVerdictSub = document.getElementById('foVerdictSub');
+    if (foVerdictSub) foVerdictSub.textContent = `${wr}% win rate · ${total} positions`;
+  }
+
   function renderTrades() {
     const S = window.SEED; if (!S) return;
     const tState = window.TA.tState;
@@ -49,6 +97,7 @@
       </tr>`;
     }).join('');
     $('#tCount').textContent = `Showing ${rows.length} of ${(S.trades || []).length}`;
+    renderTradesKpis();
   }
 
   // Wire search input
@@ -77,5 +126,5 @@
     });
   });
 
-  Object.assign(window.TA, { tagFor, renderTrades });
+  Object.assign(window.TA, { tagFor, renderTrades, renderTradesKpis });
 })();

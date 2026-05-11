@@ -7,6 +7,11 @@
     document.body.dataset.theme = window.TA.tw.theme;
     document.body.dataset.density = window.TA.tw.density;
     document.body.dataset.accent = window.TA.tw.accent;
+    // Sync mood attribute and chrome switcher buttons
+    const mood = window.TA.tw.mood || 'bloomberg';
+    document.body.dataset.mood = mood;
+    document.querySelectorAll('#themeSwitch button[data-mood]').forEach(b =>
+      b.classList.toggle('on', b.dataset.mood === mood));
     if (!window.SEED) return;
     const S = window.SEED, h = S.hero;
     if (window.TA.tw.hero === "fo") window.TA.setHero("F&O net", h.fo_net, 0, "F&O segment only");
@@ -34,12 +39,37 @@
   $('#btnData').addEventListener('click', () => $('#dataModal').hidden = false);
   $$('[data-close]').forEach(el => el.addEventListener('click', () => $('#dataModal').hidden = true));
 
-  // ---------- THEME BUTTON ----------
-  $('#btnTheme').addEventListener('click', () => {
-    window.TA.tw.theme = window.TA.tw.theme === 'light' ? 'dark' : 'light';
-    persist();
-    applyTweaks();
-  });
+  // ---------- CHROME THEME SWITCHER (Bloomberg / Paper / Carbon) ----------
+  const themeSwitch = document.getElementById('themeSwitch');
+  if (themeSwitch) {
+    themeSwitch.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-mood]');
+      if (!btn) return;
+      const mood = btn.dataset.mood;
+      const themeMap = { bloomberg: 'dark', carbon: 'dark', paper: 'light' };
+      window.TA.tw.mood  = mood;
+      window.TA.tw.theme = themeMap[mood] || 'dark';
+      persist();
+      applyTweaks();
+      window.TA.redrawCharts();
+    });
+  }
+
+  // ---------- IST CLOCK ----------
+  function updateClock() {
+    const el = document.getElementById('istClock');
+    if (!el) return;
+    el.textContent = new Date().toLocaleTimeString('en-IN',
+      { timeZone: 'Asia/Kolkata', hour12: false }) + ' IST';
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ---------- EXPORT BUTTON (no-op stub, prints page) ----------
+  const btnExport = document.getElementById('btnExport');
+  if (btnExport) {
+    btnExport.addEventListener('click', () => window.print());
+  }
 
   // ---------- TWEAKS PANEL ----------
   const tweaksEl = $('#tweaks');
@@ -192,6 +222,7 @@
     window.TA.redrawCharts();
     window.TA.renderTrades();
     window.TA.renderEquity();
+    if (window.TA.buildFYOptions) window.TA.buildFYOptions();
 
     // FIX: Charts inside hidden panels (analysis, equity) have zero dimensions
     // when rendered while the panel is display:none. Force a resize after a
@@ -207,10 +238,14 @@
   };
 
   // ---------- BOOT ----------
-  // Apply theme/density/accent without rendering data (SEED is null until upload)
-  document.body.dataset.theme = window.TA.tw.theme;
+  // Apply theme/density/accent/mood without rendering data (SEED is null until upload)
+  document.body.dataset.theme   = window.TA.tw.theme;
   document.body.dataset.density = window.TA.tw.density;
-  document.body.dataset.accent = window.TA.tw.accent;
+  document.body.dataset.accent  = window.TA.tw.accent;
+  document.body.dataset.mood    = window.TA.tw.mood || 'bloomberg';
+  // Sync chrome switcher to persisted mood
+  document.querySelectorAll('#themeSwitch button[data-mood]').forEach(b =>
+    b.classList.toggle('on', b.dataset.mood === (window.TA.tw.mood || 'bloomberg')));
   showEmptyState();
   syncPanel();
   window.addEventListener('resize', () => { window.TA.drawHeroCurve(); window.TA.drawCumulative(); });
