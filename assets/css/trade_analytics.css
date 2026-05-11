@@ -1608,4 +1608,26 @@ body[data-pulse="live"] .ticker-tape { display: block; }
 [data-mood="bloomberg"] .tag.ce { background: rgba(96,165,250,.12); color: var(--ce); }
 [data-mood="bloomberg"] .tag.pe { background: rgba(192,132,252,.12); color: var(--pe); }
 [data-mood="carbon"] .tag.ce    { background: rgba(251,191,36,.12); color: var(--ce); }
+
+/* ── FY Select ── */
+#fySelect {
+  height: 26px;
+  padding: 0 24px 0 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--ink);
+  font: 500 11px/1 var(--font-mono);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0l4.5 5L9 0z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  transition: border-color .15s;
+}
+#fySelect:not(:disabled):hover { border-color: var(--ink-2); }
+#fySelect:disabled { opacity: .35; cursor: default; }
+#fySelect option { background: var(--surface); color: var(--ink); }
+[data-mood="paper"] #fySelect option { background: #faf7f1; }
 [data-mood="carbon"] .tag.pe    { background: rgba(251,146,60,.12); color: var(--pe); }

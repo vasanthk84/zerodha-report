@@ -21,6 +21,9 @@
       <span class="muted" id="istClock">—</span>
     </div>
     <div class="chrome-actions">
+      <select id="fySelect" disabled title="Filter by financial year">
+        <option value="">All years</option>
+      </select>
       <div class="theme-switch" id="themeSwitch" role="group" aria-label="Theme">
         <button data-mood="bloomberg" class="on" title="Bloomberg · near-black terminal">
           <span class="theme-swatch bloomberg"></span>Bloomberg
@@ -279,6 +282,7 @@
         </label>
       </div>
       <div class="modal-foot">
+        <button class="btn-ghost" onclick="window.TA && window.TA.clearAllData && window.TA.clearAllData()" style="color:var(--neg);border-color:var(--neg);opacity:.7" title="Remove all loaded data">Clear data</button>
         <span class="muted">Upload CSVs to load your data</span>
         <button class="btn-primary">Compute &amp; load</button>
       </div>
@@ -304,6 +308,7 @@
   <script src="assets/js/ta-market.js"></script>
   <script src="assets/js/ta-boot.js"></script>
   <script src="assets/js/ta-persist.js"></script>
+  <script src="assets/js/ta-fy-filter.js"></script>
   <script src="assets/js/ta-csv-import.js"></script>
 </body>
 </html>

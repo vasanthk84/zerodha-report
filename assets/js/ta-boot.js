@@ -222,6 +222,7 @@
     window.TA.redrawCharts();
     window.TA.renderTrades();
     window.TA.renderEquity();
+    if (window.TA.buildFYOptions) window.TA.buildFYOptions();
 
     // FIX: Charts inside hidden panels (analysis, equity) have zero dimensions
     // when rendered while the panel is display:none. Force a resize after a
