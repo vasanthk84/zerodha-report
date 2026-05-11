@@ -272,6 +272,33 @@
     });
     console.log('[eq] built trades:', eqT.length);
 
+    // ---- Accumulate across FY imports: symbol-level merge ----
+    // New CSV is authoritative for every symbol it contains.
+    // Old trades whose symbols are NOT in the new CSV are kept (different FY/period).
+    // Charges are prorated: old charges kept only for the old trades that survive.
+    window.SEED_MASTER = null;
+    if (window.TA) window.TA._fyActive = '';
+    const prev = window.SEED;
+
+    const prevFoTrades = (prev && prev.trades) || [];
+    const newFoSyms = new Set(foT.map(t => t.sym));
+    const prevFoKept = prevFoTrades.filter(t => !newFoSyms.has(t.sym));
+    const mergedFoT = [...prevFoKept, ...foT].sort((a, b) => a.close.localeCompare(b.close));
+
+    const prevEqTrades = (prev && prev.equity && prev.equity.trades) || [];
+    const newEqSyms = new Set(eqT.map(t => t.sym));
+    const prevEqKept = prevEqTrades.filter(t => !newEqSyms.has(t.sym));
+    const mergedEqT = [...prevEqKept, ...eqT];
+
+    // Charges: new CSV covers its symbols; old charges kept proportionally for surviving old trades
+    const prevFoCharges = (prev && prev.hero && prev.hero.fo_charges) || 0;
+    const foKeptRatio = prevFoTrades.length > 0 ? prevFoKept.length / prevFoTrades.length : 0;
+    const charges_fo = Math.round(foKeptRatio * prevFoCharges) + (foPnl.charges || 0);
+
+    const prevEqCharges = (prev && prev.hero && prev.hero.eq_charges) || 0;
+    const eqKeptRatio = prevEqTrades.length > 0 ? prevEqKept.length / prevEqTrades.length : 0;
+    const charges_eq = Math.round(eqKeptRatio * prevEqCharges) + (eqPnl.charges || 0);
+
     // Aggregations
     const by = (rows, key) => {
       const m = {};
@@ -287,17 +314,15 @@
       }));
     };
 
-    const charges_fo = foPnl.charges || 0;
-    const charges_eq = eqPnl.charges || 0;
-    const foGross = foT.reduce((a, t) => a + t.pnl, 0);
-    const eqGross = eqT.reduce((a, t) => a + t.pnl, 0);
+    const foGross = mergedFoT.reduce((a, t) => a + t.pnl, 0);
+    const eqGross = mergedEqT.reduce((a, t) => a + t.pnl, 0);
     const foNet = foGross - charges_fo;
     const eqNet = eqGross - charges_eq;
     const combined = foNet + eqNet;
-    const wins = foT.filter(t => t.win).length, losses = foT.length - wins;
+    const wins = mergedFoT.filter(t => t.win).length, losses = mergedFoT.length - wins;
 
     const monthOrd = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12 };
-    const monthly = by(foT, 'month_label').map(m => {
+    const monthly = by(mergedFoT, 'month_label').map(m => {
       const [mn, yr] = m.key.split(' ');
       return { m: m.key, pnl: m.pnl, _ord: (parseInt(yr) || 0) * 100 + (monthOrd[mn] || 0) };
     }).sort((a, b) => a._ord - b._ord);
@@ -331,7 +356,7 @@
     const best = mergedFoT.length ? mergedFoT.reduce((a, b) => b.pnl > a.pnl ? b : a) : null;
     const worst = mergedFoT.length ? mergedFoT.reduce((a, b) => b.pnl < a.pnl ? b : a) : null;
 
-    // Equity aggregation: by symbol — use merged set
+    // Equity aggregation: by symbol
     const eqByStock = {};
     mergedEqT.forEach(t => {
       if (!eqByStock[t.sym]) eqByStock[t.sym] = { sym: t.sym, pnl: 0, n: 0, wins: 0 };
@@ -356,7 +381,7 @@
       monthly, cumulative,
       stocks: byStock.slice(0, 12),
       byHold, byHour, byBucket, cepe,
-      trades: mergedFoT.map(t => ({ sym: t.sym, stk: t.stk, type: t.type, entry: t.entry, exit: t.exit, pnl: t.pnl, pct: t.pct, d: t.d, k: t.k, win: t.win, close: t.close, open_date: t.open_date, lots: t.lots, open_hour: t.open_hour, month_label: t.month_label, hold_bucket: t.hold_bucket, price_bucket: t.price_bucket, price_sub: t.price_sub })),
+      trades: mergedFoT,
       equity: {
         gross: Math.round(eqGross), net: Math.round(eqNet), charges: Math.round(charges_eq),
         wins: eqWins, losses: eqLosses,
@@ -366,17 +391,38 @@
         trades: mergedEqT
       },
       extras: { best, worst, totalPositions: mergedFoT.length, wins, losses, winRate: Math.round(wins / Math.max(mergedFoT.length, 1) * 1000) / 10 },
-      enrichedTrades: enrichedTrades || null,
-      niftyDaily: state.niftyOhlc || null
+      enrichedTrades: enrichedTrades || (prev && prev.enrichedTrades) || null,
+      niftyDaily: state.niftyOhlc || (prev && prev.niftyDaily) || null
     };
-
-    console.log('[eq] SEED.equity:', JSON.stringify(window.SEED.equity, null, 2));
 
     // Trigger full redraw
     if (window.DASHBOARD_REDRAW) window.DASHBOARD_REDRAW();
+    if (window.TA && window.TA.buildFYOptions) window.TA.buildFYOptions();
+    // Persist to Upstash Redis (no-op when running locally as file://)
+    if (window.TA && window.TA.saveSeed) window.TA.saveSeed();
     // Close modal
     document.getElementById('dataModal').hidden = true;
   }
+
+  // Clear all loaded data and reset dashboard
+  function clearAllData() {
+    window.SEED = null;
+    window.SEED_MASTER = null;
+    if (window.TA) window.TA._fyActive = '';
+    const sel = document.getElementById('fySelect');
+    if (sel) { sel.innerHTML = '<option value="">All years</option>'; sel.disabled = true; }
+    Object.keys(state).forEach(k => state[k] = null);
+    const drops = document.querySelectorAll('#dataModal .drop');
+    drops.forEach(d => { d.classList.remove('loaded'); const s = d.querySelector('.drop-s'); if (s) s.textContent = 'Drop .csv or click'; });
+    if (window.TA && window.TA.clearSeed) window.TA.clearSeed();
+    // Re-show empty state by triggering boot empty state logic
+    document.querySelector('.hero-num').style.opacity = '0.15';
+    document.querySelector('.hero-sub').innerHTML = '<span class="serif">Upload your Zerodha CSVs to see your analytics.</span> Click <b>Data</b> in the top-right to get started.';
+    document.querySelector('.kpi-row').style.opacity = '0.15';
+    document.querySelector('.hero-curve').style.opacity = '0.15';
+    document.querySelector('.hero-split').style.opacity = '0.15';
+  }
+  window.TA.clearAllData = clearAllData;
 
   // ---------- FILE INPUT WIRING ----------
   function wireDrop(idx, onData) {
