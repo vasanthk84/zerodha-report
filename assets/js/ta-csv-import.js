@@ -286,8 +286,16 @@
     const mergedFoT = [...prevFoKept, ...foT].sort((a, b) => a.close.localeCompare(b.close));
 
     const prevEqTrades = (prev && prev.equity && prev.equity.trades) || [];
-    const newEqSyms = new Set(eqT.map(t => t.sym));
-    const prevEqKept = prevEqTrades.filter(t => !newEqSyms.has(t.sym));
+    // Key: sym|FY_start_year so the same stock traded in different fiscal years is kept separately.
+    // FY starts in April: close date in Apr–Dec → FY = that year; Jan–Mar → FY = prev year.
+    function eqKey(t) {
+      const d = new Date(t.close || '');
+      if (isNaN(d.getTime())) return t.sym;
+      const y = d.getFullYear(), m = d.getMonth() + 1;
+      return t.sym + '|' + (m >= 4 ? y : y - 1);
+    }
+    const newEqKeys = new Set(eqT.map(eqKey));
+    const prevEqKept = prevEqTrades.filter(t => !newEqKeys.has(eqKey(t)));
     const mergedEqT = [...prevEqKept, ...eqT];
 
     // Charges: new CSV covers its symbols; old charges kept proportionally for surviving old trades
@@ -466,16 +474,99 @@
     btn.style.cursor = btn.disabled ? 'not-allowed' : 'pointer';
   }
 
-  function init() {
-    wireDrop(0, text => { state.foRaw = parseCSV(text); return `${state.foRaw.length} rows`; });
-    wireDrop(1, text => { state.foPnl = parsePnlCSV(text); return `${Object.keys(state.foPnl.positions).length} symbols · ₹${Math.round(state.foPnl.charges)} charges`; });
-    wireDrop(2, text => { state.eqRaw = parseCSV(text); return `${state.eqRaw.length} rows`; });
-    wireDrop(3, text => { state.eqPnl = parsePnlCSV(text); return `${Object.keys(state.eqPnl.positions).length} symbols`; });
-    wireDrop(4, (text, file) => {
-      try { state.niftyOhlc = parseNiftyOhlc(text); }
-      catch (e) { throw new Error('Invalid JSON — ' + e.message); }
-      return `${Object.keys(state.niftyOhlc).length} trading days`;
+  // ---------- FOLDER AUTO-DETECT ----------
+  const SLOT_HANDLERS = [
+    text => { state.foRaw = parseCSV(text); return `${state.foRaw.length} rows`; },
+    text => { state.foPnl = parsePnlCSV(text); return `${Object.keys(state.foPnl.positions).length} symbols · ₹${Math.round(state.foPnl.charges)} charges`; },
+    text => { state.eqRaw = parseCSV(text); return `${state.eqRaw.length} rows`; },
+    text => { state.eqPnl = parsePnlCSV(text); return `${Object.keys(state.eqPnl.positions).length} symbols`; },
+    (text) => { try { state.niftyOhlc = parseNiftyOhlc(text); } catch (e) { throw new Error('Invalid JSON — ' + e.message); } return `${Object.keys(state.niftyOhlc).length} trading days`; }
+  ];
+
+  function classifyFile(name) {
+    const f = name.toLowerCase();
+    if (/tradebook.*-fo\.csv$/.test(f)) return 0;
+    if (/pnl.*fno.*\.csv$/.test(f))    return 1;
+    if (/tradebook.*-eq\.csv$/.test(f)) return 2;
+    if (/pnl.*_eq.*\.csv$/.test(f))    return 3;
+    if (/nifty.*\.json$/.test(f))       return 4;
+    return null;
+  }
+
+  function processFileAtSlot(file, idx) {
+    const drops = document.querySelectorAll('#dataModal .drop');
+    const drop = drops[idx]; if (!drop) return;
+    const tLbl = drop.querySelector('.drop-s');
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const label = SLOT_HANDLERS[idx](ev.target.result, file);
+        drop.classList.add('loaded');
+        if (tLbl) tLbl.textContent = `✓ ${file.name}` + (label ? ` · ${label}` : '');
+        updateComputeEnabled();
+      } catch (err) {
+        if (tLbl) tLbl.textContent = '✗ Parse error — check format';
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function handleFolderFiles(fileList) {
+    let matched = 0;
+    Array.from(fileList).forEach(file => {
+      const idx = classifyFile(file.name);
+      if (idx !== null) { processFileAtSlot(file, idx); matched++; }
     });
+    return matched;
+  }
+
+  function readDirEntry(dirEntry, out) {
+    return new Promise(resolve => {
+      dirEntry.createReader().readEntries(async entries => {
+        for (const e of entries) {
+          if (e.isFile) await new Promise(r => e.file(f => { out.push(f); r(); }));
+          else if (e.isDirectory) await readDirEntry(e, out);
+        }
+        resolve();
+      });
+    });
+  }
+
+  function wireFolderDrop() {
+    const folderEl = document.getElementById('folderDrop');
+    const folderInput = document.getElementById('folderInput');
+    if (!folderEl || !folderInput) return;
+
+    folderInput.addEventListener('change', e => handleFolderFiles(e.target.files));
+
+    folderEl.addEventListener('dragover', e => { e.preventDefault(); folderEl.classList.add('drag'); });
+    folderEl.addEventListener('dragleave', () => folderEl.classList.remove('drag'));
+    folderEl.addEventListener('drop', async e => {
+      e.preventDefault(); folderEl.classList.remove('drag');
+      const files = [];
+      const items = Array.from(e.dataTransfer.items || []);
+      for (const item of items) {
+        if (item.webkitGetAsEntry) {
+          const entry = item.webkitGetAsEntry();
+          if (entry && entry.isDirectory) await readDirEntry(entry, files);
+          else if (entry && entry.isFile) files.push(item.getAsFile());
+        } else {
+          const f = item.getAsFile ? item.getAsFile() : null;
+          if (f) files.push(f);
+        }
+      }
+      handleFolderFiles(files.length ? files : e.dataTransfer.files);
+    });
+  }
+
+  function init() {
+    wireDrop(0, SLOT_HANDLERS[0]);
+    wireDrop(1, SLOT_HANDLERS[1]);
+    wireDrop(2, SLOT_HANDLERS[2]);
+    wireDrop(3, SLOT_HANDLERS[3]);
+    wireDrop(4, SLOT_HANDLERS[4]);
+    wireFolderDrop();
     const btn = document.querySelector('#dataModal .btn-primary');
     if (btn) { btn.addEventListener('click', computeAndApply); btn.textContent = 'Compute & load'; }
     updateComputeEnabled();

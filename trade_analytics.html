@@ -269,15 +269,21 @@
         <div><div class="eyebrow">Data source</div><h3>Load Zerodha CSV</h3></div>
         <button class="x" data-close>✕</button>
       </div>
-      <p class="modal-sub">All parsing happens locally in your browser. Files never leave this device.</p>
+      <p class="modal-sub">All parsing happens locally — files never leave your device.</p>
+      <label class="folder-drop" id="folderDrop">
+        <input type="file" id="folderInput" webkitdirectory multiple style="display:none">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <div class="fd-main">Select your Zerodha folder</div>
+        <div class="fd-sub">Drop folder here · or <span class="fd-link">click to browse</span> · tradebook &amp; P&amp;L files matched by filename automatically</div>
+      </label>
       <div class="upload-grid">
-        <label class="drop"><div class="drop-t">F&amp;O · Tradebook</div><div class="drop-s">Drop .csv or click</div><input type="file" accept=".csv" /></label>
-        <label class="drop"><div class="drop-t">F&amp;O · P&amp;L CSV</div><div class="drop-s">Drop .csv or click</div><input type="file" accept=".csv" /></label>
-        <label class="drop"><div class="drop-t">Equity · Tradebook</div><div class="drop-s">Drop .csv or click</div><input type="file" accept=".csv" /></label>
-        <label class="drop"><div class="drop-t">Equity · P&amp;L CSV</div><div class="drop-s">Drop .csv or click</div><input type="file" accept=".csv" /></label>
+        <label class="drop"><div class="drop-t">F&amp;O · Tradebook</div><div class="drop-s">Not detected · drop or click to override</div><input type="file" accept=".csv" /></label>
+        <label class="drop"><div class="drop-t">F&amp;O · P&amp;L CSV</div><div class="drop-s">Not detected · drop or click to override</div><input type="file" accept=".csv" /></label>
+        <label class="drop"><div class="drop-t">Equity · Tradebook</div><div class="drop-s">Not detected · drop or click to override</div><input type="file" accept=".csv" /></label>
+        <label class="drop"><div class="drop-t">Equity · P&amp;L CSV</div><div class="drop-s">Not detected · drop or click to override</div><input type="file" accept=".csv" /></label>
         <label class="drop" style="grid-column:1/-1">
           <div class="drop-t">NIFTY 50 · OHLC JSON <span style="font-size:10px;color:var(--muted);font-weight:400">— required for Market Context tab</span></div>
-          <div class="drop-s">Array or object keyed by date with open/high/low/close · Drop .json or click</div>
+          <div class="drop-s">Optional · drop .json or click</div>
           <input type="file" accept=".json" />
         </label>
       </div>
