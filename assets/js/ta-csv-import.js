@@ -536,9 +536,13 @@
     // Group by fiscal year found in the path (e.g. "2021-2022")
     const byFy = {}, flat = [];
     items.forEach(({ file, relPath }) => {
-      const m = relPath.match(/(\d{4}-\d{4})/);
-      if (m) (byFy[m[1]] = byFy[m[1]] || []).push({ file, relPath });
-      else   flat.push({ file, relPath });
+      const m = relPath.match(/(\d{4}-\s*\d{4})/);
+      if (m) {
+        const fy = m[1].replace(/\s+/g, ''); // normalise "2025- 2026" → "2025-2026"
+        (byFy[fy] = byFy[fy] || []).push({ file, relPath });
+      } else {
+        flat.push({ file, relPath });
+      }
     });
 
     const fyKeys = Object.keys(byFy).sort();
