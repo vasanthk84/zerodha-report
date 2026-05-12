@@ -29,14 +29,18 @@
   window.TA.saveSeed = async function () {
     if (!window.SEED || !IS_SERVED) return;
     try {
+      const payload = JSON.stringify(stripForStorage(window.SEED));
+      const kb = (payload.length / 1024).toFixed(0);
+      console.log(`[persist] saving ${kb} KB to Redis`);
       const r = await fetch('/api/seed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(stripForStorage(window.SEED))
+        body: payload
       });
-      if (r.ok) flash('✓ Saved to cloud');
-      else flash('⚠ Cloud save failed', true);
+      if (r.ok) flash(`✓ Saved to cloud (${kb} KB)`);
+      else { const err = await r.text(); flash('⚠ Cloud save failed', true); console.error('[persist] save error', r.status, err); }
     } catch (e) {
+      flash('⚠ Cloud save failed', true);
       console.warn('[persist] save failed', e);
     }
   };
