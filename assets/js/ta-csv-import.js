@@ -163,10 +163,11 @@
   }
 
   // ---------- BUILD SEED FROM CSV ----------
-  function computeAndApply() {
+  // silent=true: skip modal close / redraw / Redis save (used during multi-year batch loading)
+  function computeAndApply(silent) {
     const foReady = !!(state.foRaw && state.foPnl);
     const eqReady = !!(state.eqRaw && state.eqPnl) || !!(state.eqPnl);
-    if (!foReady && !state.eqPnl) return alert('Upload at least one complete pair: tradebook + P&L CSV for F&O or Equity.');
+    if (!foReady && !state.eqPnl) { if (!silent) alert('Upload at least one complete pair: tradebook + P&L CSV for F&O or Equity.'); return; }
 
     const foRows = foReady ? state.foRaw : [];
     const eqRows = state.eqRaw ? state.eqRaw : [];
@@ -403,13 +404,12 @@
       niftyDaily: state.niftyOhlc || (prev && prev.niftyDaily) || null
     };
 
-    // Trigger full redraw
-    if (window.DASHBOARD_REDRAW) window.DASHBOARD_REDRAW();
-    if (window.TA && window.TA.buildFYOptions) window.TA.buildFYOptions();
-    // Persist to Upstash Redis (no-op when running locally as file://)
-    if (window.TA && window.TA.saveSeed) window.TA.saveSeed();
-    // Close modal
-    document.getElementById('dataModal').hidden = true;
+    if (!silent) {
+      if (window.DASHBOARD_REDRAW) window.DASHBOARD_REDRAW();
+      if (window.TA && window.TA.buildFYOptions) window.TA.buildFYOptions();
+      if (window.TA && window.TA.saveSeed) window.TA.saveSeed();
+      document.getElementById('dataModal').hidden = true;
+    }
   }
 
   // Clear all loaded data and reset dashboard
@@ -421,7 +421,9 @@
     if (sel) { sel.innerHTML = '<option value="">All years</option>'; sel.disabled = true; }
     Object.keys(state).forEach(k => state[k] = null);
     const drops = document.querySelectorAll('#dataModal .drop');
-    drops.forEach(d => { d.classList.remove('loaded'); const s = d.querySelector('.drop-s'); if (s) s.textContent = 'Drop .csv or click'; });
+    drops.forEach(d => { d.classList.remove('loaded'); const s = d.querySelector('.drop-s'); if (s) s.textContent = 'Not detected · drop or click to override'; });
+    const fd = document.getElementById('folderDrop');
+    if (fd) { fd.classList.remove('drag'); const fds = fd.querySelector('.fd-sub'); if (fds) fds.textContent = 'Drop folder here · or click to browse · tradebook & P&L files matched by filename automatically'; }
     if (window.TA && window.TA.clearSeed) window.TA.clearSeed();
     // Re-show empty state by triggering boot empty state logic
     document.querySelector('.hero-num').style.opacity = '0.15';
@@ -474,63 +476,155 @@
     btn.style.cursor = btn.disabled ? 'not-allowed' : 'pointer';
   }
 
-  // ---------- FOLDER AUTO-DETECT ----------
-  const SLOT_HANDLERS = [
-    text => { state.foRaw = parseCSV(text); return `${state.foRaw.length} rows`; },
-    text => { state.foPnl = parsePnlCSV(text); return `${Object.keys(state.foPnl.positions).length} symbols · ₹${Math.round(state.foPnl.charges)} charges`; },
-    text => { state.eqRaw = parseCSV(text); return `${state.eqRaw.length} rows`; },
-    text => { state.eqPnl = parsePnlCSV(text); return `${Object.keys(state.eqPnl.positions).length} symbols`; },
-    (text) => { try { state.niftyOhlc = parseNiftyOhlc(text); } catch (e) { throw new Error('Invalid JSON — ' + e.message); } return `${Object.keys(state.niftyOhlc).length} trading days`; }
-  ];
+  // ---------- FOLDER AUTO-DETECT (multi-year + CDS) ----------
 
-  function classifyFile(name) {
-    const f = name.toLowerCase();
-    if (/tradebook.*-fo\.csv$/.test(f)) return 0;
-    if (/pnl.*fno.*\.csv$/.test(f))    return 1;
-    if (/tradebook.*-eq\.csv$/.test(f)) return 2;
-    if (/pnl.*_eq.*\.csv$/.test(f))    return 3;
-    if (/nifty.*\.json$/.test(f))       return 4;
-    return null;
-  }
-
-  function processFileAtSlot(file, idx) {
-    const drops = document.querySelectorAll('#dataModal .drop');
-    const drop = drops[idx]; if (!drop) return;
-    const tLbl = drop.querySelector('.drop-s');
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const label = SLOT_HANDLERS[idx](ev.target.result, file);
-        drop.classList.add('loaded');
-        if (tLbl) tLbl.textContent = `✓ ${file.name}` + (label ? ` · ${label}` : '');
-        updateComputeEnabled();
-      } catch (err) {
-        if (tLbl) tLbl.textContent = '✗ Parse error — check format';
-        console.error(err);
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  function handleFolderFiles(fileList) {
-    let matched = 0;
-    Array.from(fileList).forEach(file => {
-      const idx = classifyFile(file.name);
-      if (idx !== null) { processFileAtSlot(file, idx); matched++; }
+  function readFileText(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = e => resolve(e.target.result);
+      r.onerror = () => reject(new Error('Failed to read ' + file.name));
+      r.readAsText(file);
     });
-    return matched;
   }
 
-  function readDirEntry(dirEntry, out) {
+  // Collect files from a dragged directory entry, preserving relative paths as {file, relPath}
+  function readDirEntry(entry, out, base) {
+    base = base || '';
     return new Promise(resolve => {
-      dirEntry.createReader().readEntries(async entries => {
+      entry.createReader().readEntries(async entries => {
         for (const e of entries) {
-          if (e.isFile) await new Promise(r => e.file(f => { out.push(f); r(); }));
-          else if (e.isDirectory) await readDirEntry(e, out);
+          const p = base ? base + '/' + e.name : e.name;
+          if (e.isFile) await new Promise(r => e.file(f => { out.push({ file: f, relPath: p }); r(); }));
+          else if (e.isDirectory) await readDirEntry(e, out, p);
         }
         resolve();
       });
     });
+  }
+
+  // Update an individual drop-zone slot label
+  function markDrop(idx, msg) {
+    const drops = document.querySelectorAll('#dataModal .drop');
+    const drop = drops[idx]; if (!drop) return;
+    drop.classList.add('loaded');
+    const s = drop.querySelector('.drop-s'); if (s) s.textContent = msg;
+  }
+
+  // Merge a CDS P&L into the FO P&L (CDS uses same CSV format, symbols don't collide)
+  function mergeCdsPnl(foPnl, cdsPnl) {
+    if (!foPnl) return cdsPnl;
+    return { charges: foPnl.charges + cdsPnl.charges, positions: { ...foPnl.positions, ...cdsPnl.positions } };
+  }
+
+  // Main folder handler — supports both single-year and multi-year root folder
+  async function handleFolderFiles(source) {
+    const folderEl = document.getElementById('folderDrop');
+    const statusEl = folderEl && folderEl.querySelector('.fd-sub');
+    function setStatus(msg) { if (statusEl) statusEl.textContent = msg; }
+
+    // Normalise source to [{file, relPath}]
+    let items;
+    if (source && source[0] && source[0].relPath !== undefined) {
+      items = Array.from(source); // already {file, relPath} from readDirEntry
+    } else {
+      items = Array.from(source || []).map(f => ({
+        file: f,
+        relPath: f.webkitRelativePath || f.name
+      }));
+    }
+
+    // Group by fiscal year found in the path (e.g. "2021-2022")
+    const byFy = {}, flat = [];
+    items.forEach(({ file, relPath }) => {
+      const m = relPath.match(/(\d{4}-\d{4})/);
+      if (m) (byFy[m[1]] = byFy[m[1]] || []).push({ file, relPath });
+      else   flat.push({ file, relPath });
+    });
+
+    const fyKeys = Object.keys(byFy).sort();
+
+    // Helper: find file in a list by name pattern
+    const pick = (list, re) => { const x = list.find(({ file }) => re.test(file.name.toLowerCase())); return x && x.file; };
+
+    // ---- MULTI-YEAR ROOT FOLDER ----
+    if (fyKeys.length > 0) {
+      window.SEED = null;
+      let loaded = 0;
+
+      for (const fy of fyKeys) {
+        setStatus(`Loading ${fy}… (${loaded + 1} of ${fyKeys.length})`);
+        const fyItems = byFy[fy];
+
+        state.foRaw = null; state.foPnl = null; state.eqRaw = null; state.eqPnl = null;
+
+        const foTbF  = pick(fyItems, /tradebook.*-fo\.csv$/);
+        const foPnlF = pick(fyItems, /pnl.*fno.*\.csv$/);
+        const eqTbF  = pick(fyItems, /tradebook.*-eq\.csv$/);
+        const eqPnlF = pick(fyItems, /pnl.*_eq.*\.csv$/);
+        const cdsTbF = pick(fyItems, /tradebook.*-cds\.csv$/);
+        const cdsPnlF= pick(fyItems, /pnl.*_cds.*\.csv$/);
+
+        if (foTbF)  state.foRaw = parseCSV(await readFileText(foTbF));
+        if (foPnlF) state.foPnl = parsePnlCSV(await readFileText(foPnlF));
+        if (eqTbF)  state.eqRaw = parseCSV(await readFileText(eqTbF));
+        if (eqPnlF) state.eqPnl = parsePnlCSV(await readFileText(eqPnlF));
+
+        if (cdsTbF) {
+          const rows = parseCSV(await readFileText(cdsTbF));
+          state.foRaw = [...(state.foRaw || []), ...rows];
+        }
+        if (cdsPnlF) state.foPnl = mergeCdsPnl(state.foPnl, parsePnlCSV(await readFileText(cdsPnlF)));
+
+        if (state.foPnl || state.eqPnl) { computeAndApply(true); loaded++; }
+      }
+
+      if (!loaded) { setStatus('No Zerodha CSV pairs found — check folder structure'); return; }
+
+      const S = window.SEED;
+      const foN = S && S.trades ? S.trades.length : 0;
+      const eqN = S && S.equity ? S.equity.total : 0;
+      markDrop(0, `✓ ${loaded} FY · ${foN} F&O positions`);
+      markDrop(1, `✓ ${loaded} FY · ${foN} F&O positions`);
+      if (eqN) { markDrop(2, `✓ ${loaded} FY · ${eqN} equity positions`); markDrop(3, `✓ ${loaded} FY · ${eqN} equity positions`); }
+      setStatus(`✓ ${loaded} financial year${loaded > 1 ? 's' : ''} loaded (${fyKeys.slice(0, loaded).join(', ')})`);
+
+      Object.keys(state).forEach(k => { if (k !== 'niftyOhlc') state[k] = null; });
+      if (window.DASHBOARD_REDRAW) window.DASHBOARD_REDRAW();
+      if (window.TA && window.TA.buildFYOptions) window.TA.buildFYOptions();
+      if (window.TA && window.TA.saveSeed) window.TA.saveSeed();
+      document.getElementById('dataModal').hidden = true;
+      return;
+    }
+
+    // ---- SINGLE YEAR FOLDER (flat file list) ----
+    const foTbF  = pick(flat, /tradebook.*-fo\.csv$/);
+    const foPnlF = pick(flat, /pnl.*fno.*\.csv$/);
+    const eqTbF  = pick(flat, /tradebook.*-eq\.csv$/);
+    const eqPnlF = pick(flat, /pnl.*_eq.*\.csv$/);
+    const cdsTbF = pick(flat, /tradebook.*-cds\.csv$/);
+    const cdsPnlF= pick(flat, /pnl.*_cds.*\.csv$/);
+
+    if (foTbF)  { state.foRaw = parseCSV(await readFileText(foTbF));    markDrop(0, `✓ ${foTbF.name} · ${state.foRaw.length} rows`); }
+    if (foPnlF) { state.foPnl = parsePnlCSV(await readFileText(foPnlF)); markDrop(1, `✓ ${foPnlF.name} · ${Object.keys(state.foPnl.positions).length} symbols · ₹${Math.round(state.foPnl.charges)} charges`); }
+    if (eqTbF)  { state.eqRaw = parseCSV(await readFileText(eqTbF));    markDrop(2, `✓ ${eqTbF.name} · ${state.eqRaw.length} rows`); }
+    if (eqPnlF) { state.eqPnl = parsePnlCSV(await readFileText(eqPnlF)); markDrop(3, `✓ ${eqPnlF.name} · ${Object.keys(state.eqPnl.positions).length} symbols`); }
+
+    if (cdsTbF) {
+      const rows = parseCSV(await readFileText(cdsTbF));
+      state.foRaw = [...(state.foRaw || []), ...rows];
+      markDrop(0, `✓ FO+CDS · ${state.foRaw.length} rows`);
+    }
+    if (cdsPnlF) {
+      state.foPnl = mergeCdsPnl(state.foPnl, parsePnlCSV(await readFileText(cdsPnlF)));
+      markDrop(1, `✓ FO+CDS · ${Object.keys(state.foPnl.positions).length} symbols · ₹${Math.round(state.foPnl.charges)} charges`);
+    }
+
+    const anyFound = foTbF || foPnlF || eqTbF || eqPnlF || cdsTbF || cdsPnlF;
+    if (!anyFound) { setStatus('No Zerodha CSV files recognised — check filenames'); return; }
+
+    setStatus('Files matched — computing…');
+    updateComputeEnabled();
+    computeAndApply(false);
   }
 
   function wireFolderDrop() {
@@ -538,37 +632,32 @@
     const folderInput = document.getElementById('folderInput');
     if (!folderEl || !folderInput) return;
 
-    folderInput.addEventListener('change', e => handleFolderFiles(e.target.files));
+    folderInput.addEventListener('change', e => handleFolderFiles(e.target.files).catch(console.error));
 
     folderEl.addEventListener('dragover', e => { e.preventDefault(); folderEl.classList.add('drag'); });
     folderEl.addEventListener('dragleave', () => folderEl.classList.remove('drag'));
     folderEl.addEventListener('drop', async e => {
       e.preventDefault(); folderEl.classList.remove('drag');
-      const files = [];
-      const items = Array.from(e.dataTransfer.items || []);
-      for (const item of items) {
-        if (item.webkitGetAsEntry) {
-          const entry = item.webkitGetAsEntry();
-          if (entry && entry.isDirectory) await readDirEntry(entry, files);
-          else if (entry && entry.isFile) files.push(item.getAsFile());
-        } else {
-          const f = item.getAsFile ? item.getAsFile() : null;
-          if (f) files.push(f);
-        }
+      const collected = [];
+      for (const item of Array.from(e.dataTransfer.items || [])) {
+        if (!item.webkitGetAsEntry) { const f = item.getAsFile && item.getAsFile(); if (f) collected.push({ file: f, relPath: f.name }); continue; }
+        const entry = item.webkitGetAsEntry();
+        if (entry && entry.isDirectory) await readDirEntry(entry, collected, entry.name);
+        else if (entry && entry.isFile) { const f = item.getAsFile(); if (f) collected.push({ file: f, relPath: f.name }); }
       }
-      handleFolderFiles(files.length ? files : e.dataTransfer.files);
+      handleFolderFiles(collected.length ? collected : e.dataTransfer.files).catch(console.error);
     });
   }
 
   function init() {
-    wireDrop(0, SLOT_HANDLERS[0]);
-    wireDrop(1, SLOT_HANDLERS[1]);
-    wireDrop(2, SLOT_HANDLERS[2]);
-    wireDrop(3, SLOT_HANDLERS[3]);
-    wireDrop(4, SLOT_HANDLERS[4]);
+    wireDrop(0, text => { state.foRaw = parseCSV(text); return `${state.foRaw.length} rows`; });
+    wireDrop(1, text => { state.foPnl = parsePnlCSV(text); return `${Object.keys(state.foPnl.positions).length} symbols · ₹${Math.round(state.foPnl.charges)} charges`; });
+    wireDrop(2, text => { state.eqRaw = parseCSV(text); return `${state.eqRaw.length} rows`; });
+    wireDrop(3, text => { state.eqPnl = parsePnlCSV(text); return `${Object.keys(state.eqPnl.positions).length} symbols`; });
+    wireDrop(4, text => { try { state.niftyOhlc = parseNiftyOhlc(text); } catch (e) { throw new Error('Invalid JSON — ' + e.message); } return `${Object.keys(state.niftyOhlc).length} trading days`; });
     wireFolderDrop();
     const btn = document.querySelector('#dataModal .btn-primary');
-    if (btn) { btn.addEventListener('click', computeAndApply); btn.textContent = 'Compute & load'; }
+    if (btn) { btn.addEventListener('click', () => computeAndApply(false)); btn.textContent = 'Compute & load'; }
     updateComputeEnabled();
   }
 
